@@ -1,0 +1,17 @@
+{
+  "status": "follow_up_needed",
+  "follow_up_question": "How long have you had the fever?",
+  "options": [
+    "Less than 24 hours",
+    "24-48 hours",
+    "More than 48 hours",
+    "elaborate..."
+  ],
+  "describe_placeholder": "Describe your symptoms here...",
+  "care_type": null,
+  "urgency": null,
+  "red_flags": [],
+  "reasoning": "Need duration and severity to assess urgency and appropriate care type.",
+  "next_steps": [],
+  "caregivers": []
+}
