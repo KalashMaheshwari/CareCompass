@@ -11,7 +11,7 @@ import {
 import { useApp } from '../context/AppContext'
 
 export default function Navbar() {
-  const { currentRoute, navigate, language, setLanguage, activePatient } = useApp()
+  const { currentRoute, navigate, language, setLanguage, activePatient, t } = useApp()
 
   return (
     <header className="navbar">
@@ -27,7 +27,7 @@ export default function Navbar() {
         </div>
         <div className="brand-text">
           <span className="brand-title">CareCompass</span>
-          <span className="brand-badge">Clinical Triage Engine</span>
+          <span className="brand-badge">{t('brand_badge')}</span>
         </div>
       </button>
 
@@ -41,7 +41,7 @@ export default function Navbar() {
               onClick={() => navigate('/describe')}
             >
               <Activity size={16} />
-              <span>Symptom Triage</span>
+              <span>{t('nav_symptoms') || 'Check Symptoms'}</span>
             </button>
           </li>
           <li>
@@ -51,27 +51,17 @@ export default function Navbar() {
               onClick={() => navigate('/caregivers')}
             >
               <Users size={16} />
-              <span>Caregiver Directory</span>
+              <span>{t('nav_find_caregivers') || 'Find Caregivers'}</span>
             </button>
           </li>
           <li>
             <button 
-              className={`nav-item-btn ${currentRoute.startsWith('/checkin') ? 'active' : ''}`} 
+              className={`nav-item-btn ${currentRoute.startsWith('/checkin') || currentRoute === '/history' ? 'active' : ''}`} 
               type="button"
               onClick={() => navigate('/checkin')}
             >
               <Clock size={16} />
-              <span>Check-In Monitor</span>
-            </button>
-          </li>
-          <li>
-            <button 
-              className={`nav-item-btn ${currentRoute.startsWith('/patients') ? 'active' : ''}`} 
-              type="button"
-              onClick={() => navigate('/patients')}
-            >
-              <UserCheck size={16} />
-              <span>Family Members</span>
+              <span>{t('nav_monitor') || 'Health Monitor'}</span>
             </button>
           </li>
           <li>
@@ -81,7 +71,7 @@ export default function Navbar() {
               onClick={() => navigate('/dashboard')}
             >
               <ShieldCheck size={16} />
-              <span>Safety Metrics</span>
+              <span>{t('nav_safety') || 'Clinical Safety'}</span>
             </button>
           </li>
           <li>
@@ -91,7 +81,17 @@ export default function Navbar() {
               onClick={() => navigate('/call-sim')}
             >
               <PhoneCall size={16} />
-              <span>IVR & WhatsApp</span>
+              <span>{t('nav_channels') || 'Phone & WhatsApp'}</span>
+            </button>
+          </li>
+          <li>
+            <button 
+              className={`nav-item-btn ${currentRoute === '/settings' || currentRoute.startsWith('/patients') ? 'active' : ''}`} 
+              type="button"
+              onClick={() => navigate('/settings')}
+            >
+              <UserCheck size={16} />
+              <span>{t('nav_settings') || 'Settings & Profile'}</span>
             </button>
           </li>
         </ul>
@@ -99,44 +99,6 @@ export default function Navbar() {
 
       {/* Global Actions */}
       <div className="nav-actions">
-        {/* Active Patient Pill */}
-        {activePatient && (
-          <button
-            type="button"
-            className="nav-item-btn"
-            style={{ padding: '0.4rem 0.75rem', fontSize: '0.78rem' }}
-            onClick={() => navigate('/patients')}
-            title="Switch Patient Profile"
-          >
-            <span>👤 {activePatient.full_name}</span>
-          </button>
-        )}
-
-        {/* Trilingual Switcher */}
-        <div className="lang-selector-pill">
-          <button 
-            type="button"
-            className={`lang-btn ${language === 'hi' ? 'active' : ''}`}
-            onClick={() => setLanguage('hi')}
-          >
-            हिन्दी
-          </button>
-          <button 
-            type="button"
-            className={`lang-btn ${language === 'hinglish' ? 'active' : ''}`}
-            onClick={() => setLanguage('hinglish')}
-          >
-            Hinglish
-          </button>
-          <button 
-            type="button"
-            className={`lang-btn ${language === 'en' ? 'active' : ''}`}
-            onClick={() => setLanguage('en')}
-          >
-            EN
-          </button>
-        </div>
-
         {/* Global 112 Red Alert */}
         <button 
           type="button" 

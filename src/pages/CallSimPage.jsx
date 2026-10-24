@@ -142,7 +142,7 @@ export const CallSimPage = () => {
 
       {/* IVR SIMULATOR */}
       {activeChannel === 'call' && (
-        <div className="surface-card" style={{ background: '#090e17', color: '#ffffff', padding: '36px 24px', textAlign: 'center', borderColor: '#1e293b' }}>
+        <div className="surface-card" style={{ background: '#133b70', color: '#ffffff', padding: '36px 24px', textAlign: 'center', borderColor: '#1e293b' }}>
           <div style={{ fontSize: '0.8rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             CareCompass Automated Toll-Free Telephony Gateway
           </div>

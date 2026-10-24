@@ -21,6 +21,7 @@ import { EmergencyPage } from './pages/EmergencyPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { CallSimPage } from './pages/CallSimPage';
 import { PrivacyPage } from './pages/PrivacyPage';
+import { SettingsPage } from './pages/SettingsPage';
 
 export function App() {
   const { currentRoute, routeParams, isOffline, t } = useApp();
@@ -39,8 +40,12 @@ export function App() {
       return <LoginPage />;
     }
 
-    if (currentRoute === '/patients') {
-      return <PatientsPage />;
+    if (currentRoute === '/settings' || currentRoute === '/patients') {
+      return (
+        <SettingsPage
+          defaultTab={currentRoute === '/patients' ? 'profile' : (routeParams?.tab || 'profile')}
+        />
+      );
     }
 
     if (currentRoute === '/patients/new') {
@@ -104,6 +109,7 @@ export function App() {
   };
 
   const isEmergency = currentRoute === '/emergency';
+  const isLanding = currentRoute === '/' || currentRoute === '';
 
   return (
     <div className="app-wrapper">
@@ -122,7 +128,10 @@ export function App() {
       {!isEmergency && <GlobalHeader />}
 
       {/* 4. Main Page View */}
-      <main className="main-content" style={{ padding: isEmergency ? 0 : undefined }}>
+      <main
+        className={`main-content ${isLanding ? 'is-landing' : ''}`}
+        style={{ padding: (isEmergency || isLanding) ? 0 : undefined }}
+      >
         {renderCurrentPage()}
       </main>
 

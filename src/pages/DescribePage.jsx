@@ -3,6 +3,7 @@ import { Send, RotateCcw, AlertTriangle, Users, AlertOctagon, Mic, MicOff, Volum
 import { useApp } from '../context/AppContext';
 import { speechService } from '../services/speech';
 import { runTriage, checkClientSideRedFlags } from '../services/triageEngine';
+import { supabaseService } from '../services/supabase';
 
 export const DescribePage = ({ startListening = false, presetText = '' }) => {
   const {
@@ -36,16 +37,19 @@ export const DescribePage = ({ startListening = false, presetText = '' }) => {
   const handleToggleVoice = () => {
     if (micStatus === 'listening') {
       speechService.stopListening();
-      setMicStatus('idle');
     } else {
       setMicStatus('listening');
+      const activeLang = language || 'en';
       const started = speechService.startListening({
-        language: language === 'hi' ? 'hi' : 'en',
+        language: activeLang,
         onResult: ({ transcript, isFinal }) => {
           setInputTranscript(transcript);
           if (isFinal) {
             setMicStatus('idle');
           }
+        },
+        onTranscribing: (isTranscribing) => {
+          setMicStatus(isTranscribing ? 'transcribing' : 'idle');
         },
         onError: (err) => {
           console.warn('Voice recognition error:', err);
@@ -86,12 +90,22 @@ export const DescribePage = ({ startListening = false, presetText = '' }) => {
         patient_context: patientContext
       });
 
+      const sessId = `sess-${Date.now()}`;
       setTriageData({
         user_input: inputTranscript,
         detected_language: language,
         conversation_history: [],
         latest_response: response,
-        sessionId: `sess-${Date.now()}`
+        sessionId: sessId
+      });
+
+      // Persist session to Supabase tables
+      supabaseService.recordTriageSession({
+        sessionId: sessId,
+        userInput: inputTranscript,
+        detectedLanguage: language,
+        conversationHistory: [],
+        decision: response
       });
 
       setIsEvaluating(false);
@@ -121,27 +135,27 @@ export const DescribePage = ({ startListening = false, presetText = '' }) => {
           onClick={() => navigate('/')}
         >
           <ArrowLeft size={16} />
-          <span>Back to Intake Overview</span>
+          <span>{t('back_to_overview')}</span>
         </button>
 
         {activePatient ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.88rem', color: 'var(--text-muted)' }}>
             <Users size={16} color="var(--brand-primary)" />
             <span>
-              Target Patient: <strong style={{ color: 'var(--text-primary)' }}>{activePatient.full_name}</strong> ({activePatient.relationship})
+              {t('target_patient')} <strong style={{ color: 'var(--text-primary)' }}>{activePatient.full_name}</strong> ({activePatient.relationship})
             </span>
           </div>
         ) : (
-          <span style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>Anonymous Intake</span>
+          <span style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>{t('anonymous_intake')}</span>
         )}
       </div>
 
       {/* Main Clinical Input Surface */}
       <div className="surface-card">
         <div style={{ marginBottom: '18px' }}>
-          <h2 style={{ fontSize: '1.6rem', marginBottom: '4px' }}>Describe Patient Health Need</h2>
+          <h2 style={{ fontSize: '1.6rem', marginBottom: '4px' }}>{t('describe_heading')}</h2>
           <p style={{ fontSize: '0.92rem', color: 'var(--text-muted)' }}>
-            Speak or type the observed symptoms, duration, and patient state in plain language.
+            {t('describe_subheading')}
           </p>
         </div>
 
@@ -193,10 +207,16 @@ export const DescribePage = ({ startListening = false, presetText = '' }) => {
             </div>
             <div>
               <div style={{ fontSize: '0.95rem', fontWeight: 600 }}>
-                {micStatus === 'listening' ? 'Recording in progress... speak clearly' : 'Voice Capture Ready'}
+                {micStatus === 'listening'
+                  ? t('voice_recording')
+                  : (micStatus === 'transcribing'
+                      ? 'Transcribing audio...'
+                      : t('voice_ready'))}
               </div>
               <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
-                {micStatus === 'listening' ? 'Tap button below to stop recording' : 'Web Speech Engine active (hi-IN / en-IN)'}
+                {micStatus === 'listening'
+                  ? (language === 'hi' ? 'बोलना जारी रखें... समाप्त होने पर टैप करें' : (language === 'hinglish' ? 'Bolte rahein... bolna khatam hone par tap karein' : 'Speak naturally in Hindi or English... tap when finished'))
+                  : 'Multilingual STT (Hindi & English active)'}
               </div>
             </div>
           </div>
@@ -205,9 +225,14 @@ export const DescribePage = ({ startListening = false, presetText = '' }) => {
             type="button"
             className={`voice-action-pill ${micStatus === 'listening' ? 'recording' : ''}`}
             onClick={handleToggleVoice}
+            disabled={micStatus === 'transcribing'}
           >
             {micStatus === 'listening' ? <MicOff size={18} /> : <Mic size={18} />}
-            <span>{micStatus === 'listening' ? 'Finish Speaking' : 'Start Recording'}</span>
+            <span>
+              {micStatus === 'listening'
+                ? t('finish_speaking')
+                : (micStatus === 'transcribing' ? 'Transcribing...' : t('start_recording'))}
+            </span>
           </button>
         </div>
 
@@ -215,7 +240,7 @@ export const DescribePage = ({ startListening = false, presetText = '' }) => {
         <div style={{ marginBottom: '14px' }}>
           <div className="flex-between" style={{ marginBottom: '8px' }}>
             <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-              Editable Transcript / Symptom Notes
+              {t('transcript_notes')}
             </span>
             {inputTranscript && (
               <button
@@ -224,7 +249,7 @@ export const DescribePage = ({ startListening = false, presetText = '' }) => {
                 onClick={() => setInputTranscript('')}
               >
                 <RotateCcw size={13} />
-                <span>Clear Input</span>
+                <span>{t('clear_input')}</span>
               </button>
             )}
           </div>
@@ -233,7 +258,7 @@ export const DescribePage = ({ startListening = false, presetText = '' }) => {
             className="form-control"
             rows={5}
             style={{ fontSize: '1.05rem', lineHeight: 1.5, padding: '14px' }}
-            placeholder="Describe health need here in Hindi, English, or Hinglish..."
+            placeholder={t('symptom_placeholder')}
             value={inputTranscript}
             onChange={(e) => setInputTranscript(e.target.value)}
           />
@@ -255,11 +280,11 @@ export const DescribePage = ({ startListening = false, presetText = '' }) => {
             {isEvaluating ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span className="spinner" style={{ width: '18px', height: '18px', margin: 0, borderWidth: '2px' }}></span>
-                <span>Evaluating Clinical Pathway...</span>
+                <span>{t('evaluating_pathway')}</span>
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>Run Clinical Triage</span>
+                <span>{t('run_triage_btn')}</span>
                 <Send size={18} />
               </div>
             )}

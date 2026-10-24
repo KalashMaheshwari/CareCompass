@@ -1,9 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Mic, Send, Volume2, FastForward, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Mic, FastForward, Check, ArrowRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { SpeakerButton } from '../components/SpeakerButton';
 import { runTriage } from '../services/triageEngine';
 import { speechService } from '../services/speech';
+import { supabaseService } from '../services/supabase';
+
+const isNegativeOption = (opt) => {
+  if (!opt) return false;
+  const lower = opt.toLowerCase();
+  return (
+    lower.startsWith('nahi') ||
+    lower.startsWith('no') ||
+    lower.includes('koi nahi') ||
+    lower.includes('kuch nahi') ||
+    lower.includes('none') ||
+    lower.includes('normal')
+  );
+};
+
+const isElaborateOption = (opt) => {
+  if (!opt) return false;
+  const lower = opt.toLowerCase();
+  return (
+    opt === 'Elaborate' ||
+    lower.includes('other') ||
+    lower.includes('describe') ||
+    lower.includes('specify')
+  );
+};
 
 export const FollowUpPage = () => {
   const {
@@ -19,19 +44,71 @@ export const FollowUpPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [voiceAnswer, setVoiceAnswer] = useState('');
   const [isListening, setIsListening] = useState(false);
+  const [customText, setCustomText] = useState('');
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [selectedOptions, setSelectedOptions] = useState([]);
 
   const currentQuestion = triageData.latest_response?.follow_up_question || '';
-  const options = triageData.latest_response?.follow_up_options || [t('yes'), t('no'), t('not_sure')];
+  const rawOptions = triageData.latest_response?.options || triageData.latest_response?.follow_up_options;
+  const options = Array.isArray(rawOptions) && rawOptions.length > 0 ? rawOptions : [t('yes'), t('no'), t('not_sure')];
   const history = triageData.conversation_history || [];
   const questionNumber = history.length + 1;
 
   useEffect(() => {
+    setSelectedOptions([]);
+    setShowCustomInput(false);
+    setCustomText('');
     if (currentQuestion) {
       autoSpeak(currentQuestion);
     }
   }, [currentQuestion]);
 
-  const handleSelectOption = async (selectedAnswer) => {
+  // Support pressing Enter to submit current selections
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter' && !showCustomInput && selectedOptions.length > 0 && !isSubmitting) {
+        e.preventDefault();
+        handleConfirmSelection();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedOptions, showCustomInput, isSubmitting, customText]);
+
+  const handleToggleOption = (opt) => {
+    if (isElaborateOption(opt)) {
+      setShowCustomInput(prev => !prev);
+      return;
+    }
+
+    setSelectedOptions(prev => {
+      if (prev.includes(opt)) {
+        return prev.filter(item => item !== opt);
+      } else {
+        if (isNegativeOption(opt)) {
+          return [opt];
+        }
+        const filtered = prev.filter(item => !isNegativeOption(item));
+        return [...filtered, opt];
+      }
+    });
+  };
+
+  const handleConfirmSelection = async () => {
+    let combinedAnswers = [...selectedOptions];
+    if (customText.trim()) {
+      combinedAnswers.push(customText.trim());
+    }
+
+    if (combinedAnswers.length === 0) return;
+
+    const finalAnswer = combinedAnswers.join(', ');
+    await submitAnswer(finalAnswer);
+  };
+
+  const submitAnswer = async (selectedAnswer) => {
+    if (!selectedAnswer) return;
+
     speechService.stopSpeaking();
     setIsSubmitting(true);
 
@@ -53,9 +130,11 @@ export const FollowUpPage = () => {
         conditions: activePatient.existing_conditions || ''
       } : null;
 
+      const activeLang = language || triageData.detected_language || 'en';
+
       const response = await runTriage({
         user_input: triageData.user_input,
-        language: triageData.detected_language || language,
+        language: activeLang,
         conversation_history: updatedHistory,
         patient_context: patientContext
       });
@@ -66,12 +145,23 @@ export const FollowUpPage = () => {
         latest_response: response
       }));
 
+      // Persist to Supabase
+      supabaseService.recordTriageSession({
+        sessionId: triageData.sessionId,
+        userInput: triageData.user_input,
+        detectedLanguage: activeLang,
+        conversationHistory: updatedHistory,
+        decision: response
+      });
+
       setIsSubmitting(false);
 
       if (response.requires_emergency_path || response.urgency === 'immediate') {
         navigate('/emergency');
-      } else if (response.follow_up_question && updatedHistory.length < 3) {
-        // Continue follow-up
+      } else if (response.follow_up_question && updatedHistory.length < 4) {
+        setShowCustomInput(false);
+        setCustomText('');
+        setSelectedOptions([]);
       } else {
         navigate('/result');
       }
@@ -89,10 +179,11 @@ export const FollowUpPage = () => {
       conditions: activePatient.existing_conditions || ''
     } : null;
 
+    const skipHistory = [...history, { question: currentQuestion, answer: 'skipped' }];
     const response = await runTriage({
       user_input: triageData.user_input,
       language: triageData.detected_language || language,
-      conversation_history: [...history, { question: currentQuestion, answer: 'skipped' }],
+      conversation_history: skipHistory,
       patient_context: patientContext
     });
 
@@ -100,6 +191,14 @@ export const FollowUpPage = () => {
       ...prev,
       latest_response: response
     }));
+
+    supabaseService.recordTriageSession({
+      sessionId: triageData.sessionId,
+      userInput: triageData.user_input,
+      detectedLanguage: triageData.detected_language || language,
+      conversationHistory: skipHistory,
+      decision: response
+    });
 
     setIsSubmitting(false);
     navigate('/result');
@@ -111,13 +210,14 @@ export const FollowUpPage = () => {
       setIsListening(false);
     } else {
       setIsListening(true);
+      const activeLang = language || triageData.detected_language || 'en';
       speechService.startListening({
-        language: language === 'hi' ? 'hi' : 'en',
+        language: activeLang,
         onResult: ({ transcript, isFinal }) => {
           setVoiceAnswer(transcript);
           if (isFinal) {
             setIsListening(false);
-            handleSelectOption(transcript);
+            submitAnswer(transcript);
           }
         },
         onError: () => setIsListening(false),
@@ -126,94 +226,176 @@ export const FollowUpPage = () => {
     }
   };
 
+  const progressPercent = (Math.min(questionNumber, 4) / 4) * 100;
+
   return (
-    <div style={{ maxWidth: '740px', margin: '0 auto', width: '100%' }}>
-      {/* Stepper Header */}
-      <div className="flex-between" style={{ marginBottom: '16px' }}>
+    <div style={{ maxWidth: '680px', margin: '0 auto', width: '100%' }}>
+      {/* Sleek Top Navigation & Step Counter */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
         <button
           type="button"
           className="btn btn-secondary"
-          style={{ padding: '7px 14px', fontSize: '0.85rem' }}
+          style={{ padding: '6px 12px', fontSize: '0.84rem' }}
           onClick={() => navigate('/describe')}
         >
-          <ArrowLeft size={16} />
-          <span>Modify Description</span>
+          <ArrowLeft size={15} />
+          <span>{t('modify_description')}</span>
         </button>
 
-        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-          Clinical Follow-Up: Question {questionNumber} of 2
+        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#64748b' }}>
+          {t('question_counter', { current: Math.min(questionNumber, 4) })}
         </span>
       </div>
 
-      {/* Main Question Card */}
-      <div className="surface-card" style={{ padding: '32px 28px', textAlign: 'center', position: 'relative' }}>
-        <div style={{ position: 'absolute', top: '20px', right: '20px' }}>
-          <SpeakerButton text={currentQuestion} size={20} />
+      {/* Thin Linear Progress Bar */}
+      <div className="followup-progress-track">
+        <div className="followup-progress-fill" style={{ width: `${progressPercent}%` }} />
+      </div>
+
+      {/* Main Question Surface */}
+      <div className="surface-card" style={{ padding: '32px 30px' }}>
+        {/* Question & Audio Row */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: '6px' }}>
+          <h2 style={{
+            fontSize: '1.35rem',
+            fontWeight: 600,
+            color: '#0f172a',
+            lineHeight: 1.42,
+            margin: 0
+          }}>
+            {currentQuestion}
+          </h2>
+          <SpeakerButton text={currentQuestion} size={18} />
         </div>
 
-        <h3 style={{ fontSize: '1.5rem', lineHeight: 1.45, marginBottom: '28px', padding: '0 28px', color: 'var(--text-primary)' }}>
-          {currentQuestion}
-        </h3>
+        <p style={{ fontSize: '0.86rem', color: '#64748b', margin: '0 0 20px 0' }}>
+          {t('followup_tip')}
+        </p>
 
-        {/* Options Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-          {options.map((opt, idx) => (
-            <button
-              key={idx}
-              id={`followup-option-${idx}`}
-              type="button"
-              className="btn btn-secondary btn-lg"
+        {/* Clean Options List */}
+        <div className="followup-options-list">
+          {options.map((opt, idx) => {
+            const isSelected = selectedOptions.includes(opt);
+            const isElab = isElaborateOption(opt);
+
+            return (
+              <div
+                key={idx}
+                id={`followup-option-${idx}`}
+                role="checkbox"
+                aria-checked={isSelected}
+                tabIndex={0}
+                className={`followup-card ${isSelected ? 'is-selected' : ''}`}
+                onClick={() => handleToggleOption(opt)}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    handleToggleOption(opt);
+                  }
+                }}
+              >
+                <div className="followup-checkbox">
+                  {isSelected && <Check size={13} strokeWidth={2.8} />}
+                </div>
+                <span className="followup-card-text">{opt}</span>
+                {isElab && (
+                  <span style={{ fontSize: '0.8rem', color: '#0284c7', fontWeight: 500 }}>
+                    {showCustomInput ? t('hide_text') : t('add_text')}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Clean Text Box for Elaboration */}
+        {showCustomInput && (
+          <div style={{ marginTop: '14px', marginBottom: '8px' }}>
+            <input
+              type="text"
+              className="text-input"
+              value={customText}
+              onChange={(e) => setCustomText(e.target.value)}
+              placeholder={triageData.latest_response?.other_option_placeholder || (language === 'hi' ? 'अपने लक्षण यहाँ विस्तार से लिखें...' : (language === 'hinglish' ? 'Apne lakshan yahan likhein...' : 'Describe your symptoms here...'))}
+              autoFocus
               style={{
-                fontSize: '1.05rem',
-                justifyContent: 'center',
-                backgroundColor: idx === 0 ? '#f0fdfa' : '#ffffff',
-                borderColor: idx === 0 ? '#99f6e4' : 'var(--border-light)',
-                color: idx === 0 ? '#0f766e' : 'var(--text-primary)',
-                fontWeight: 700
+                width: '100%',
+                padding: '11px 14px',
+                borderRadius: '8px',
+                border: '1.5px solid #0284c7',
+                fontSize: '0.94rem'
               }}
-              disabled={isSubmitting}
-              onClick={() => handleSelectOption(opt)}
-            >
-              {opt}
-            </button>
-          ))}
-        </div>
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleConfirmSelection();
+                }
+              }}
+            />
+          </div>
+        )}
 
-        {/* Voice Dictate Alternative */}
-        <div style={{ marginTop: '24px', paddingTop: '18px', borderTop: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+        {/* Action Row */}
+        <div style={{
+          marginTop: '26px',
+          paddingTop: '18px',
+          borderTop: '1px solid #f1f5f9',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button
+              type="button"
+              className={`btn-voice-input ${isListening ? 'active' : ''}`}
+              onClick={toggleMicAnswer}
+              title="Speak your answer"
+            >
+              <Mic size={15} />
+              <span>{isListening ? t('voice_listening') : t('voice_answer_btn')}</span>
+            </button>
+            {voiceAnswer && (
+              <span style={{ fontSize: '0.82rem', color: '#0284c7' }}>
+                "{voiceAnswer}"
+              </span>
+            )}
+          </div>
+
           <button
             type="button"
-            className={`btn btn-secondary ${isListening ? 'listening' : ''}`}
-            style={{ fontSize: '0.88rem', borderColor: isListening ? '#ef4444' : 'var(--border-light)' }}
-            onClick={toggleMicAnswer}
+            className="btn btn-primary"
+            style={{ padding: '10px 22px', fontSize: '0.92rem', borderRadius: '8px' }}
+            disabled={(selectedOptions.length === 0 && !customText.trim()) || isSubmitting}
+            onClick={handleConfirmSelection}
           >
-            <Mic size={16} color={isListening ? '#ef4444' : 'var(--brand-primary)'} />
-            <span>{isListening ? 'Listening... Speak Answer' : 'Or Answer Spoken Voice'}</span>
-          </button>
-          {voiceAnswer && (
-            <span style={{ fontSize: '0.85rem', color: '#0284c7' }}>
-              Recognized: "{voiceAnswer}"
+            <span>
+              {selectedOptions.length > 1
+                ? t('continue_count_btn', { count: selectedOptions.length })
+                : t('continue_btn')}
             </span>
-          )}
+            <ArrowRight size={15} />
+          </button>
         </div>
       </div>
 
-      {/* Skip Button */}
+      {/* Skip Question Link */}
       <div style={{ textAlign: 'center', marginTop: '16px' }}>
         <button
           type="button"
-          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.86rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.84rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
           onClick={handleSkipToResult}
         >
           <span>{t('skip_question')}</span>
-          <FastForward size={14} />
+          <FastForward size={13} />
         </button>
       </div>
 
       {isSubmitting && (
-        <div style={{ textAlign: 'center', marginTop: '16px' }}>
-          <span style={{ fontSize: '0.86rem', color: 'var(--brand-teal-700)', fontWeight: 600 }}>
-            Analyzing clinical parameters...
+        <div style={{ textAlign: 'center', marginTop: '14px' }}>
+          <span style={{ fontSize: '0.84rem', color: '#0284c7', fontWeight: 500 }}>
+            {t('analyzing_clinical')}
           </span>
         </div>
       )}

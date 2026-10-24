@@ -414,14 +414,95 @@ export const dataService = {
 
   // --- CAREGIVERS & AVAILABILITY ---
   async getCaregivers() {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('caregivers')
+          .select('*')
+          .eq('is_active', true);
+        if (!error && Array.isArray(data) && data.length > 0) {
+          return data;
+        }
+      } catch (err) {
+        console.warn('Supabase getCaregivers fallback:', err);
+      }
+    }
     return SEED_CAREGIVERS;
   },
 
   async getAvailability(caregiverId) {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('caregiver_availability')
+          .select('*')
+          .eq('caregiver_id', caregiverId)
+          .eq('status', 'available');
+        if (!error && Array.isArray(data) && data.length > 0) {
+          return data;
+        }
+      } catch (err) {
+        console.warn('Supabase getAvailability fallback:', err);
+      }
+    }
     return SEED_AVAILABILITY.filter(a => a.caregiver_id === caregiverId && a.status === 'available');
   },
 
-  // --- BOOKINGS ---
+  // --- TRIAGE SESSIONS & DECISIONS (Table 4, 5, 6 in Supabase Schema) ---
+  async recordTriageSession({
+    sessionId,
+    userInput,
+    detectedLanguage,
+    location,
+    conversationHistory,
+    decision
+  }) {
+    const currentUser = this.getCurrentUser();
+    const sid = sessionId || `sess-${Date.now()}`;
+
+    const sessionPayload = {
+      id: sid,
+      user_id: currentUser ? currentUser.id : null,
+      user_input: userInput || '',
+      detected_language: detectedLanguage || 'auto',
+      latitude: location?.lat || 28.54,
+      longitude: location?.lng || 77.27,
+      conversation_history: conversationHistory || [],
+      follow_up_question: decision?.follow_up_question || null,
+      status: decision?.care_type ? 'completed' : 'in_progress',
+      created_at: new Date().toISOString()
+    };
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('triage_sessions').upsert([sessionPayload]);
+
+        if (decision && decision.care_type) {
+          // Normalize care_type to Supabase schema enum constraint
+          let dbCareType = decision.care_type;
+          if (dbCareType === 'nurse_home_visit') dbCareType = 'nurse';
+          if (dbCareType === 'specialist_consult') dbCareType = 'specialist';
+
+          await supabase.from('triage_decisions').upsert([{
+            session_id: sid,
+            care_type: dbCareType,
+            urgency: decision.urgency || 'same_day',
+            red_flags: decision.red_flags || [],
+            reasoning: decision.reasoning || '',
+            requires_emergency_path: Boolean(decision.requires_emergency_path)
+          }]);
+        }
+      } catch (err) {
+        console.warn('Supabase recordTriageSession error:', err);
+      }
+    }
+
+    const sessions = getStorageItem(STORAGE_KEYS.SESSIONS, []);
+    setStorageItem(STORAGE_KEYS.SESSIONS, [sessionPayload, ...sessions.filter(s => s.id !== sid)]);
+    return sessionPayload;
+  },
+
+  // --- BOOKINGS (Table 7 in Supabase Schema) ---
   async createBooking({ sessionId, caregiverId, availabilityId, scheduledAt, patientName }) {
     const currentUser = this.getCurrentUser();
     const cg = SEED_CAREGIVERS.find(c => c.id === caregiverId) || SEED_CAREGIVERS[0];
@@ -440,6 +521,21 @@ export const dataService = {
       created_at: new Date().toISOString()
     };
 
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('bookings').insert([{
+          session_id: newBooking.session_id,
+          caregiver_id: newBooking.caregiver_id,
+          availability_id: newBooking.availability_id,
+          user_id: newBooking.user_id,
+          status: newBooking.status,
+          scheduled_at: newBooking.scheduled_at
+        }]);
+      } catch (err) {
+        console.warn('Supabase createBooking insert error:', err);
+      }
+    }
+
     const bookings = getStorageItem(STORAGE_KEYS.BOOKINGS, []);
     setStorageItem(STORAGE_KEYS.BOOKINGS, [newBooking, ...bookings]);
 
@@ -450,15 +546,39 @@ export const dataService = {
   },
 
   async getBookings() {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('bookings')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (!error && Array.isArray(data) && data.length > 0) {
+          return data;
+        }
+      } catch (err) {
+        console.warn('Supabase getBookings fallback:', err);
+      }
+    }
     return getStorageItem(STORAGE_KEYS.BOOKINGS, []);
   },
 
   async getBookingById(bookingId) {
-    const list = getStorageItem(STORAGE_KEYS.BOOKINGS, []);
+    const list = await this.getBookings();
     return list.find(b => b.id === bookingId) || null;
   },
 
   async updateBookingStatus(bookingId, status) {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase
+          .from('bookings')
+          .update({ status })
+          .eq('id', bookingId);
+      } catch (err) {
+        console.warn('Supabase updateBookingStatus error:', err);
+      }
+    }
+
     const list = getStorageItem(STORAGE_KEYS.BOOKINGS, []);
     const updated = list.map(b => b.id === bookingId ? { ...b, status } : b);
     setStorageItem(STORAGE_KEYS.BOOKINGS, updated);
@@ -477,9 +597,8 @@ export const dataService = {
     return item;
   },
 
-  // --- AUDIT LOGS ---
+  // --- AUDIT LOGS (Table 8 in Supabase Schema) ---
   recordAudit(sessionId, eventType, details = {}) {
-    const audits = getStorageItem(STORAGE_KEYS.AUDIT, []);
     const newEntry = {
       id: `audit-${Date.now()}`,
       session_id: sessionId,
@@ -487,6 +606,20 @@ export const dataService = {
       details,
       created_at: new Date().toISOString()
     };
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        supabase.from('decision_audit').insert([{
+          session_id: sessionId,
+          event_type: eventType,
+          details
+        }]).then();
+      } catch (err) {
+        console.warn('Supabase recordAudit error:', err);
+      }
+    }
+
+    const audits = getStorageItem(STORAGE_KEYS.AUDIT, []);
     setStorageItem(STORAGE_KEYS.AUDIT, [newEntry, ...audits]);
   },
 
@@ -502,3 +635,6 @@ export const dataService = {
     return true;
   }
 };
+
+export const supabaseService = dataService;
+export default dataService;

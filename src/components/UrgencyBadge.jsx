@@ -23,7 +23,7 @@ export const UrgencyBadge = ({ urgency = 'same_day' }) => {
     }
   };
 
-  const current = config[urgency] || config.same_day;
+  const current = config[urgency] || config.routine;
 
   return (
     <span className={`clinical-badge ${current.className}`}>

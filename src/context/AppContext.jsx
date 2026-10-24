@@ -50,6 +50,16 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  // 3b. Speech playback rate (0.85 | 1.0 | 1.25)
+  const [speechRate, setSpeechRateState] = useState(() => {
+    return parseFloat(localStorage.getItem('carecompass_speech_rate') || '1.0');
+  });
+
+  const setSpeechRate = (rate) => {
+    setSpeechRateState(rate);
+    localStorage.setItem('carecompass_speech_rate', String(rate));
+  };
+
   // 4. Current User & Active Profile
   const [user, setUser] = useState(() => dataService.getCurrentUser());
   const [members, setMembers] = useState([]);
@@ -143,7 +153,7 @@ export const AppProvider = ({ children }) => {
   // Auto-speak utility with user check
   const autoSpeak = (text) => {
     if (readAloud && text) {
-      speechService.speak(text, { language: language === 'hi' ? 'hi' : 'en' });
+      speechService.speak(text, { language: language === 'hi' ? 'hi' : 'en', rate: speechRate });
     }
   };
 
@@ -154,6 +164,8 @@ export const AppProvider = ({ children }) => {
     setFontSize,
     readAloud,
     setReadAloud,
+    speechRate,
+    setSpeechRate,
     user,
     setUser,
     members,
