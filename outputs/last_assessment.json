@@ -1,17 +1,27 @@
 {
-  "status": "follow_up_needed",
-  "follow_up_question": "How long have you had the fever?",
-  "options": [
-    "Less than 24 hours",
-    "24-48 hours",
-    "More than 48 hours",
-    "elaborate..."
-  ],
-  "describe_placeholder": "Describe your symptoms here...",
-  "care_type": null,
-  "urgency": null,
+  "status": "recommendation",
+  "follow_up_question": null,
+  "options": [],
+  "other_option_placeholder": null,
+  "care_type": "nurse_home_visit",
+  "urgency": "same_day",
   "red_flags": [],
-  "reasoning": "Need duration and severity to assess urgency and appropriate care type.",
-  "next_steps": [],
-  "caregivers": []
+  "reasoning": "The user has a fever lasting less than 24 hours with no other symptoms or warning signs, so a routine nurse home visit is appropriate.",
+  "next_steps": [
+    "Schedule a nurse home visit for a same‑day assessment. During the visit, the nurse will check your temperature, ask about any new symptoms, and advise on rest, fluids, and monitoring. If you develop a higher fever, breathing difficulty, chest pain, severe headache, confusion, or if the fever lasts more than 48 hours, seek urgent care or call emergency services."
+  ],
+  "caregivers": [
+    {
+      "id": "CG001",
+      "name": "Aarav Sharma",
+      "role": "nurse",
+      "languages": [
+        "English",
+        "Hindi",
+        "Hinglish"
+      ],
+      "distance_km": 2.4,
+      "rating": 4.8
+    }
+  ]
 }
