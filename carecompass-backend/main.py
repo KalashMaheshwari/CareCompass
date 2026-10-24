@@ -117,7 +117,7 @@ def emergency_response(reason: str) -> dict:
     }
 
 
-MAX_FOLLOW_UP_QUESTIONS = 10
+MAX_FOLLOW_UP_QUESTIONS = 5
 DEFAULT_OTHER_OPTION = "Elaborate"
 DEFAULT_OTHER_PLACEHOLDER = "Describe your symptoms here..."
 
