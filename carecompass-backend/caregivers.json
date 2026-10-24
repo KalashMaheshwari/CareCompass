@@ -1,0 +1,33 @@
+
+[
+  {
+    "id": "CG001",
+    "name": "Aarav Sharma",
+    "role": "nurse",
+    "skills": ["elderly care", "wound care"],
+    "languages": ["English", "Hindi", "Hinglish"],
+    "distance_km": 2.4,
+    "available": true,
+    "rating": 4.8
+  },
+  {
+    "id": "CG002",
+    "name": "Meera Verma",
+    "role": "paramedic",
+    "skills": ["first aid", "vital signs"],
+    "languages": ["Hindi", "Hinglish"],
+    "distance_km": 3.1,
+    "available": true,
+    "rating": 4.7
+  },
+  {
+    "id": "CG003",
+    "name": "Rohan Singh",
+    "role": "nurse",
+    "skills": ["elderly care", "post-operative care"],
+    "languages": ["English", "Hindi"],
+    "distance_km": 5.2,
+    "available": false,
+    "rating": 4.9
+  }
+]
