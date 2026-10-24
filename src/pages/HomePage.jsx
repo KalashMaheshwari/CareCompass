@@ -7,12 +7,14 @@ import {
   MapPin, 
   HeartPulse, 
   Zap, 
-  PhoneCall, 
   ChevronRight,
   Stethoscope
 } from 'lucide-react'
+import { useApp } from '../context/AppContext'
 
 export default function HomePage() {
+  const { navigate, t } = useApp()
+
   return (
     <main className="hero-section">
       {/* Top Status Pill */}
@@ -36,7 +38,12 @@ export default function HomePage() {
       <section className="intake-center-card">
         <div className="mic-halo-container">
           <div className="mic-halo-ring"></div>
-          <button type="button" className="mic-circle-btn" aria-label="Start voice triage intake">
+          <button 
+            type="button" 
+            className="mic-circle-btn" 
+            aria-label="Start voice triage intake"
+            onClick={() => navigate('/describe', { startListening: true })}
+          >
             <Mic size={38} />
           </button>
         </div>
@@ -46,7 +53,11 @@ export default function HomePage() {
           Tap the microphone to speak, or state what you or your family member are feeling.
         </p>
 
-        <button type="button" className="manual-type-link">
+        <button 
+          type="button" 
+          className="manual-type-link"
+          onClick={() => navigate('/describe')}
+        >
           <Keyboard size={15} />
           <span>Or type symptoms manually</span>
           <ChevronRight size={14} />
@@ -57,15 +68,27 @@ export default function HomePage() {
       <div className="quick-scenarios-wrapper">
         <div className="quick-scenarios-title">1-Tap Demo Scenarios</div>
         <div className="scenario-chips-row">
-          <button type="button" className="scenario-chip">
+          <button 
+            type="button" 
+            className="scenario-chip"
+            onClick={() => navigate('/describe', { presetText: '3 din se tez bukhar aur thand lag rahi hai' })}
+          >
             <HeartPulse size={15} color="#ef4444" />
             <span>"3 din se tez bukhar aur thand lag rahi hai"</span>
           </button>
-          <button type="button" className="scenario-chip">
+          <button 
+            type="button" 
+            className="scenario-chip"
+            onClick={() => navigate('/describe', { presetText: 'Papa ko saans lene mein takleef aur paseena aa raha hai' })}
+          >
             <Zap size={15} color="#f59e0b" />
             <span>"Papa ko saans lene mein takleef aur paseena aa raha hai"</span>
           </button>
-          <button type="button" className="scenario-chip">
+          <button 
+            type="button" 
+            className="scenario-chip"
+            onClick={() => navigate('/describe', { presetText: 'Routine blood pressure and sugar checkup at home' })}
+          >
             <Stethoscope size={15} color="#00e5ff" />
             <span>"Routine blood pressure and sugar checkup at home"</span>
           </button>
@@ -74,7 +97,11 @@ export default function HomePage() {
 
       {/* 3 Core Architecture Pillars */}
       <section className="pillars-grid">
-        <div className="pillar-card">
+        <div 
+          className="pillar-card" 
+          style={{ cursor: 'pointer' }}
+          onClick={() => navigate('/describe')}
+        >
           <div className="pillar-icon-box">
             <Mic size={24} />
           </div>
@@ -84,7 +111,11 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="pillar-card">
+        <div 
+          className="pillar-card"
+          style={{ cursor: 'pointer' }}
+          onClick={() => navigate('/dashboard')}
+        >
           <div className="pillar-icon-box">
             <ShieldCheck size={24} />
           </div>
@@ -94,7 +125,11 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="pillar-card">
+        <div 
+          className="pillar-card"
+          style={{ cursor: 'pointer' }}
+          onClick={() => navigate('/caregivers')}
+        >
           <div className="pillar-icon-box">
             <MapPin size={24} />
           </div>
@@ -106,7 +141,12 @@ export default function HomePage() {
       </section>
 
       {/* Trust & Clinical Safety Metrics Bar */}
-      <div className="trust-stats-bar">
+      <div 
+        className="trust-stats-bar"
+        style={{ cursor: 'pointer' }}
+        onClick={() => navigate('/dashboard')}
+        title="View Safety Dashboard"
+      >
         <div className="stat-item">
           <span className="stat-value">98.5%</span>
           <span className="stat-label">Emergency Recall Rate</span>
