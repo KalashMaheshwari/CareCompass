@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Phone, PhoneCall, AlertOctagon, HeartHandshake, ShieldAlert, Send, ArrowLeft, Volume2, CheckCircle2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { speechService } from '../services/speech';
+import { SpeakerButton } from '../components/SpeakerButton';
 
 export const EmergencyPage = () => {
   const {
@@ -57,9 +58,13 @@ export const EmergencyPage = () => {
           {t('emergency_screen_title')}
         </h1>
 
-        <p style={{ fontSize: '1.05rem', color: '#475569', maxWidth: '580px', margin: '0 auto 20px auto', lineHeight: 1.5 }}>
+        <p style={{ fontSize: '1.05rem', color: '#475569', maxWidth: '580px', margin: '0 auto 14px auto', lineHeight: 1.5 }}>
           {t('emergency_screen_subtitle')}
         </p>
+
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+          <SpeakerButton text={emergencyMessage} variant="emergency" showLabel />
+        </div>
 
         {/* Hero 112 Call Trigger */}
         <a

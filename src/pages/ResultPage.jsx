@@ -263,7 +263,7 @@ export const ResultPage = () => {
                 </span>
               )}
             </div>
-            <SpeakerButton text={spokenText} size={20} />
+            <SpeakerButton text={spokenText} size={16} showLabel />
           </div>
 
           <div style={{ margin: '8px 0 16px 0' }}>

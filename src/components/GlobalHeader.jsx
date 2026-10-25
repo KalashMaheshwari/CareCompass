@@ -97,11 +97,11 @@ export const GlobalHeader = () => {
         .gh-pill {
           max-width: 1120px;
           margin: 0 auto;
-          height: 56px;
+          height: 62px;
           display: flex;
           align-items: center;
           gap: 16px;
-          padding: 0 16px 0 18px;
+          padding: 0 18px 0 20px;
           background: rgba(255, 255, 255, 0.82);
           backdrop-filter: blur(24px) saturate(190%);
           -webkit-backdrop-filter: blur(24px) saturate(190%);
@@ -128,9 +128,9 @@ export const GlobalHeader = () => {
         .gh-brand:focus-visible { outline: 2px solid var(--gh-accent); outline-offset: 2px; border-radius: 9999px; }
 
         .gh-brand-logo {
-          height: 38px;
+          height: 48px;
           width: auto;
-          max-height: 42px;
+          max-height: 52px;
           object-fit: contain;
           flex-shrink: 0;
           display: block;
@@ -487,12 +487,12 @@ export const GlobalHeader = () => {
         /* ---------- Responsive ---------- */
         @media (max-width: 900px) {
           .gh-shell { top: 8px; padding: 0 12px; }
-          .gh-pill { height: 48px; padding: 0 10px; gap: 10px; border-radius: 9999px !important; }
+          .gh-pill { height: 52px; padding: 0 12px; gap: 10px; border-radius: 9999px !important; }
           .gh-link-text { display: none; }
           .gh-link { padding: 8px; }
           .gh-sep { display: none; }
           .gh-brand { gap: 6px; }
-          .gh-brand-logo { height: 32px; }
+          .gh-brand-logo { height: 40px; }
         }
         
         @media (max-width: 768px) {

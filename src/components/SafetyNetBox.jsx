@@ -13,7 +13,7 @@ export const SafetyNetBox = () => {
       <div style={{ flex: 1 }}>
         <div className="flex-between" style={{ marginBottom: '4px' }}>
           <strong>{t('safety_net_title')}</strong>
-          <SpeakerButton text={textToRead} size={16} />
+          <SpeakerButton text={textToRead} size={15} showLabel />
         </div>
         <p>{t('safety_net_body')}</p>
       </div>

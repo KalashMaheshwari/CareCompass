@@ -362,7 +362,7 @@ export const FollowUpPage = () => {
           }}>
             {currentQuestion}
           </h2>
-          <SpeakerButton text={currentQuestion} size={18} />
+          <SpeakerButton text={currentQuestion} size={16} showLabel />
         </div>
 
         <p style={{ fontSize: '0.86rem', color: '#64748b', margin: '0 0 20px 0' }}>
