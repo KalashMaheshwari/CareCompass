@@ -15,15 +15,14 @@ export const GlobalFooter = () => {
             className="footer-brand-title"
             onClick={() => navigate('/')}
             title="CareCompass Home"
-            style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
+            aria-label="CareCompass Home"
+            style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
           >
             <img 
               src="/logo.png" 
               alt="CareCompass Logo" 
               className="footer-brand-logo" 
-              style={{ width: 30, height: 30, objectFit: 'contain' }}
             />
-            <span className="footer-brand-name">Care<span style={{ color: '#3f64ae' }}>Compass</span></span>
           </button>
           <p className="footer-tagline">
             Dedicated to your health, every day

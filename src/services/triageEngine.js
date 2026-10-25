@@ -323,8 +323,47 @@ export const runTriage = async ({
     };
   }
 
-  // 2b. Direct Assistance Request (Nurse Home Visit & Tests Early Exit)
-  const ASSISTANCE_PATTERNS = /(need\s+assistance|need\s+(a\s+)?nurse|book\s+(a\s+)?nurse|want\s+(a\s+)?nurse|home\s+nurse|nurse\s+chahiye|nurse\s+bhej|madad\s+chahiye|sahayata\s+chahiye|bedridden|elderly\s+care|home\s+care\s+needed|blood\s+test\s+(chahiye|needed|karna|karwana))/i;
+  // 2b. Direct Service Demands (Instant Appointments & Nurse Assistance Early Exit)
+  const APPOINTMENT_PATTERNS = /(instant\s+appointment|book\s+(an?\s+)?appointment|urgent\s+appointment|immediate\s+appointment|doctor\s+appointment|need\s+(an?\s+)?appointment|want\s+(an?\s+)?appointment|schedule\s+(an?\s+)?appointment|teleconsult|video\s+consult|doctor\s+consult|consult\s+(a\s+)?doctor|speak\s+(with|to)\s+(a\s+)?doctor|talk\s+(with|to)\s+(a\s+)?doctor|connect\s+(with|to)\s+(a\s+)?doctor|need\s+(a\s+)?doctor|want\s+(a\s+)?doctor|call\s+(a\s+)?doctor|appointment\s+chahiye|doctor\s+chahiye|doctor\s+se\s+baat|turant\s+appointment|turant\s+doctor|डॉक्टर\s+अपॉइंटमेंट|अपॉइंटमेंट\s+चाहिए)/i;
+  const hasAppointmentRequest = APPOINTMENT_PATTERNS.test(lowerText) ||
+    history.some(h => APPOINTMENT_PATTERNS.test(String(h.answer || h.user_input || '')));
+
+  if (hasAppointmentRequest) {
+    const teleconsultCaregivers = SEED_CAREGIVERS.filter(c => c.care_types.includes('gp_teleconsult')).slice(0, 3);
+    return {
+      status: 'recommendation',
+      follow_up_question: null,
+      follow_up_options: null,
+      options: [],
+      other_option_placeholder: null,
+      care_type: 'gp_teleconsult',
+      raw_care_type: 'gp_teleconsult',
+      urgency: 'immediate',
+      red_flags: [],
+      reasoning: detectedLanguage === 'hi'
+        ? 'आपने तत्काल डॉक्टर अपॉइंटमेंट का अनुरोध किया है। आपको बिना किसी अतिरिक्त सवाल या इंतज़ार के सीधे उपलब्ध चिकित्सकों से जोड़ा जा रहा है।'
+        : (detectedLanguage === 'hinglish'
+            ? 'Aapne instant doctor appointment aur teleconsultation demand ki hai. Bina kisi follow-up sawal ke turant available general physicians se connect kiya ja raha hai.'
+            : 'You requested an instant doctor appointment / teleconsultation. We have directly routed your request to available certified physicians with zero wait time.'),
+      next_steps: [
+        detectedLanguage === 'hi' ? 'कदम 1: नीचे दिए गए डॉक्टरों में से तुरंत वीडियो या ऑडियो परामर्श स्लॉट चुनें।' : 'Step 1: Choose your preferred physician for an instant consultation slot.',
+        detectedLanguage === 'hi' ? 'कदम 2: अपने लक्षण और पुरानी दवाइयों की जानकारी तैयार रखें।' : 'Step 2: Have your symptom timeline and past prescriptions ready.',
+        detectedLanguage === 'hi' ? 'कदम 3: डॉक्टर से जुड़ें और प्रमाणित डिजिटल पर्चा प्राप्त करें।' : 'Step 3: Connect directly via secure call to receive your clinical prescription.'
+      ],
+      home_care: [
+        detectedLanguage === 'hi' ? 'परामर्श के लिए शांत स्थान पर बैठें और पर्याप्त पानी पिएं।' : 'Sit in a quiet space and remain comfortably hydrated while connecting.'
+      ],
+      warning_signs: [
+        'Achanak saans lene mein tez takleef ya chest pain',
+        'Kisi bhi gambhir aapatkaal mein turant 112 par call karein'
+      ],
+      recommended_tests: [],
+      nurse_care_option: null,
+      matched_caregivers: teleconsultCaregivers.length > 0 ? teleconsultCaregivers : SEED_CAREGIVERS.slice(0, 2)
+    };
+  }
+
+  const ASSISTANCE_PATTERNS = /(nurse\s+assistance|need\s+assistance|assistance\s+needed|need\s+(a\s+)?nurse|book\s+(a\s+)?nurse|want\s+(a\s+)?nurse|send\s+(a\s+)?nurse|home\s+nurse|nurse\s+at\s+home|nurse\s+visit|nurse\s+help|nurse\s+support|nurse\s+chahiye|nurse\s+assistance\s+chahiye|nurse\s+bhej|madad\s+chahiye|sahayata\s+chahiye|bedridden|elderly\s+care|home\s+care\s+needed|blood\s+test\s+(chahiye|needed|karna|karwana))/i;
   const hasAssistanceRequest = ASSISTANCE_PATTERNS.test(lowerText) ||
     history.some(h => ASSISTANCE_PATTERNS.test(String(h.answer || h.user_input || '')));
 

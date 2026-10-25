@@ -29,5 +29,25 @@
     "distance_km": 5.2,
     "available": false,
     "rating": 4.9
+  },
+  {
+    "id": "DOC001",
+    "name": "Dr. Ananya Roy, MBBS, MD",
+    "role": "doctor",
+    "skills": ["general medicine", "teleconsultation", "internal medicine"],
+    "languages": ["English", "Hindi", "Hinglish"],
+    "distance_km": 1.2,
+    "available": true,
+    "rating": 4.95
+  },
+  {
+    "id": "DOC002",
+    "name": "Dr. Vikram Sethi, MBBS",
+    "role": "doctor",
+    "skills": ["family physician", "teleconsultation", "urgent care"],
+    "languages": ["English", "Hindi", "Hinglish"],
+    "distance_km": 2.8,
+    "available": true,
+    "rating": 4.88
   }
 ]

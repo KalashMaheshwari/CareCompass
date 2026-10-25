@@ -1,44 +1,32 @@
 /**
  * CareCompass Speech Service
- * Dual-Engine Multilingual Speech-to-Text (STT) & Speech-to-Speech (TTS)
- * Supports Hindi (hi-IN), English (en-IN), and Hinglish
+ * High-Accuracy Multilingual Speech-to-Text (STT) powered by Sarvam AI (saaras:v4)
+ * & Speech-to-Speech (TTS)
  *
- * Engine 1: Real-time Client Streaming via Browser Web Speech API (zero latency)
- * Engine 2: State-of-the-Art Multilingual Whisper STT (/api/transcribe) via Groq (whisper-large-v3-turbo)
+ * Engine: Sarvam AI STT (/api/transcribe) - specialized for Indian accents,
+ * Hindi (hi-IN), Indian English (en-IN), and code-mixed Hinglish.
+ * Failover: Groq Whisper (whisper-large-v3-turbo)
  */
 
 class SpeechService {
   constructor() {
-    this.recognition = null;
     this.isListening = false;
     this.synthesis = typeof window !== 'undefined' ? window.speechSynthesis : null;
     this.isSpeaking = false;
     this.voices = [];
 
-    // MediaRecorder state for Whisper backup
+    // MediaRecorder state for Sarvam AI STT
     this.mediaRecorder = null;
     this.audioChunks = [];
     this.mediaStream = null;
-    this.accumulatedTranscript = '';
-    this.hasLiveTranscript = false;
 
     // Callbacks
     this.activeCallbacks = null;
 
-    if (typeof window !== 'undefined') {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        this.recognition = new SpeechRecognition();
-        this.recognition.continuous = true;
-        this.recognition.interimResults = true;
-        this.recognition.maxAlternatives = 1;
-      }
-
-      if (this.synthesis) {
-        this.loadVoices();
-        if (this.synthesis.onvoiceschanged !== undefined) {
-          this.synthesis.onvoiceschanged = () => this.loadVoices();
-        }
+    if (typeof window !== 'undefined' && this.synthesis) {
+      this.loadVoices();
+      if (this.synthesis.onvoiceschanged !== undefined) {
+        this.synthesis.onvoiceschanged = () => this.loadVoices();
       }
     }
   }
@@ -58,29 +46,31 @@ class SpeechService {
   }
 
   isSpeechRecognitionSupported() {
-    return typeof window !== 'undefined' && Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+    return typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
   }
 
   /**
-   * Start Speech Recognition with Dual Engine:
-   * 1. Live stream typing via Web Speech API (hi-IN / en-IN)
-   * 2. High-accuracy audio recording via MediaRecorder -> Whisper fallback
+   * Start Speech Recording for Sarvam AI STT
    */
   async startListening({ language = 'hi', onResult, onError, onEnd, onTranscribing }) {
     if (this.isListening) {
-      this.stopListening();
+      await this.stopListening();
     }
 
-    this.accumulatedTranscript = '';
-    this.hasLiveTranscript = false;
     this.audioChunks = [];
     this.activeCallbacks = { onResult, onError, onEnd, onTranscribing, language };
     this.isListening = true;
 
-    // 1. Initialize audio recording for Whisper backup (if mic permissions granted)
     try {
       if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1,
+            sampleRate: 16000,
+            echoCancellation: true,
+            noiseSuppression: true
+          }
+        });
         this.mediaStream = stream;
 
         const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
@@ -97,78 +87,26 @@ class SpeechService {
         };
 
         this.mediaRecorder.start(250); // Collect slices every 250ms
+        console.log('[CareCompass STT] Sarvam AI recording started...');
+        return true;
+      } else {
+        throw new Error('Audio recording is not supported in this browser environment.');
       }
     } catch (micErr) {
-      console.warn('[CareCompass STT] MediaRecorder mic access notice:', micErr.message);
-      // If mic was explicitly denied, notify user
-      if (micErr.name === 'NotAllowedError' || micErr.name === 'PermissionDeniedError') {
-        this.isListening = false;
-        if (onError) onError('Microphone access was denied. Please allow microphone permissions in your browser.');
-        return false;
+      console.warn('[CareCompass STT] Mic permission error:', micErr.message);
+      this.isListening = false;
+      if (onError) {
+        onError(micErr.name === 'NotAllowedError'
+          ? 'Microphone access denied. Please grant microphone permissions.'
+          : 'Could not access microphone.');
       }
+      if (onEnd) onEnd();
+      return false;
     }
-
-    // 2. Start Live Web Speech API if supported
-    if (this.recognition) {
-      try {
-        // Map language: 'hi' or 'hinglish' uses Indian Hindi model; 'en' uses Indian English model
-        this.recognition.lang = language === 'en' ? 'en-IN' : 'hi-IN';
-
-        this.recognition.onstart = () => {
-          this.isListening = true;
-        };
-
-        this.recognition.onresult = (event) => {
-          let interim = '';
-
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            const item = event.results[i];
-            if (item.isFinal) {
-              this.accumulatedTranscript += item[0].transcript + ' ';
-              this.hasLiveTranscript = true;
-            } else {
-              interim += item[0].transcript;
-            }
-          }
-
-          const combined = (this.accumulatedTranscript + interim).trim();
-          if (combined && onResult) {
-            this.hasLiveTranscript = true;
-            onResult({
-              transcript: combined,
-              isFinal: false
-            });
-          }
-        };
-
-        this.recognition.onerror = (event) => {
-          console.warn('[CareCompass STT] Live SpeechRecognition error event:', event.error);
-          // If no-speech or network glitch, do NOT abort if MediaRecorder is active
-          if (event.error === 'not-allowed') {
-            this.isListening = false;
-            if (onError) onError('Microphone permission blocked.');
-          }
-        };
-
-        this.recognition.onend = () => {
-          // If continuous recognition ends while user is still marked as listening, keep listening active unless explicitly stopped
-        };
-
-        this.recognition.start();
-        return true;
-      } catch (err) {
-        console.warn('[CareCompass STT] SpeechRecognition start warning:', err.message);
-      }
-    }
-
-    // If browser Web Speech is not available, but MediaRecorder is recording, we return true!
-    return Boolean(this.mediaRecorder);
   }
 
   /**
-   * Stop listening and finalize transcript.
-   * If live Web Speech captured the text, deliver it immediately.
-   * Otherwise, upload audio to Groq Whisper for instantaneous transcription!
+   * Stop recording and send audio to Sarvam AI STT
    */
   async stopListening() {
     if (!this.isListening) return;
@@ -176,15 +114,6 @@ class SpeechService {
 
     const callbacks = this.activeCallbacks || {};
     const { onResult, onError, onEnd, onTranscribing, language } = callbacks;
-
-    // Stop Web Speech recognition
-    if (this.recognition) {
-      try {
-        this.recognition.stop();
-      } catch (e) {
-        // Ignored
-      }
-    }
 
     // Stop MediaStream tracks
     if (this.mediaStream) {
@@ -195,20 +124,6 @@ class SpeechService {
       }
     }
 
-    // Process final audio via MediaRecorder or deliver live transcript
-    const finalLiveText = (this.accumulatedTranscript || '').trim();
-
-    // If we already have a full, high-confidence live transcript from Web Speech API:
-    if (finalLiveText && finalLiveText.length >= 3) {
-      if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
-        try { this.mediaRecorder.stop(); } catch (e) {}
-      }
-      if (onResult) onResult({ transcript: finalLiveText, isFinal: true });
-      if (onEnd) onEnd();
-      return;
-    }
-
-    // If live transcript was empty or unavailable, use Groq Whisper server fallback!
     if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
       try {
         this.mediaRecorder.onstop = async () => {
@@ -218,8 +133,8 @@ class SpeechService {
           }
 
           const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-          if (audioBlob.size < 800) {
-            // Less than 800 bytes is essentially empty/silent
+          if (audioBlob.size < 600) {
+            // Empty / accidental tap
             if (onEnd) onEnd();
             return;
           }
@@ -227,6 +142,7 @@ class SpeechService {
           if (onTranscribing) onTranscribing(true);
 
           try {
+            console.log(`[CareCompass STT] Uploading audio (${audioBlob.size} bytes) to Sarvam AI STT...`);
             const formData = new FormData();
             formData.append('file', audioBlob, 'speech.webm');
             formData.append('language', language || 'auto');
@@ -239,15 +155,22 @@ class SpeechService {
             if (res.ok) {
               const data = await res.json();
               const transcript = (data.text || '').trim();
+              console.log(`[CareCompass STT] Transcribed via ${data.engine || 'Sarvam'}: "${transcript}"`);
               if (transcript && onResult) {
-                onResult({ transcript, isFinal: true });
+                onResult({ transcript, isFinal: true, engine: data.engine || 'sarvam' });
               }
             } else {
-              console.warn('[CareCompass STT] /api/transcribe responded with non-200');
+              let detail = '';
+              try {
+                const errData = await res.json();
+                detail = errData.detail || errData.error || '';
+              } catch (e) {}
+              console.warn('[CareCompass STT] /api/transcribe failed:', detail || res.status);
+              if (onError) onError('Could not transcribe audio. Please type your message.');
             }
           } catch (err) {
-            console.error('[CareCompass STT] Whisper upload error:', err);
-            if (onError) onError('Could not transcribe audio. You can type your symptoms.');
+            console.error('[CareCompass STT] Sarvam STT upload network error:', err);
+            if (onError) onError('Network error during speech transcription.');
           } finally {
             if (onTranscribing) onTranscribing(false);
             if (onEnd) onEnd();
@@ -257,7 +180,7 @@ class SpeechService {
         this.mediaRecorder.stop();
         return;
       } catch (recStopErr) {
-        console.warn('MediaRecorder stop error:', recStopErr);
+        console.warn('[CareCompass STT] MediaRecorder stop error:', recStopErr);
       }
     }
 
@@ -275,7 +198,7 @@ class SpeechService {
     try {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = language === 'hi' ? 'hi-IN' : 'en-IN';
-      utterance.rate = rate || 0.95; // Configurable speech rate
+      utterance.rate = rate || 0.95;
       utterance.pitch = 1.0;
 
       const voice = this.getBestVoice(language);

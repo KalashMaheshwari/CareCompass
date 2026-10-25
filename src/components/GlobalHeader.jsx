@@ -128,11 +128,12 @@ export const GlobalHeader = () => {
         .gh-brand:focus-visible { outline: 2px solid var(--gh-accent); outline-offset: 2px; border-radius: 9999px; }
 
         .gh-brand-logo {
-          width: 28px;
-          height: 28px;
+          height: 38px;
+          width: auto;
+          max-height: 42px;
           object-fit: contain;
-          border-radius: 6px;
           flex-shrink: 0;
+          display: block;
         }
 
         .gh-brand-copy {
@@ -489,8 +490,9 @@ export const GlobalHeader = () => {
           .gh-pill { height: 48px; padding: 0 10px; gap: 10px; border-radius: 9999px !important; }
           .gh-link-text { display: none; }
           .gh-link { padding: 8px; }
-          .gh-sep, .gh-brand-sub { display: none; }
+          .gh-sep { display: none; }
           .gh-brand { gap: 6px; }
+          .gh-brand-logo { height: 32px; }
         }
         
         @media (max-width: 768px) {
@@ -510,19 +512,13 @@ export const GlobalHeader = () => {
           className="gh-brand" 
           onClick={() => navigate('/')} 
           title="CareCompass — Multilingual Healthcare Navigator"
+          aria-label="CareCompass — Multilingual Healthcare Navigator"
         >
           <img 
             src="/logo.png" 
             alt="CareCompass Logo" 
             className="gh-brand-logo" 
           />
-          <div className="gh-brand-copy">
-            <span className="gh-brand-title">
-              <span className="gh-care">Care</span>
-              <span className="gh-compass">Compass</span>
-            </span>
-            <span className="gh-brand-sub">HEALTH NAVIGATOR</span>
-          </div>
         </button>
 
         <div className="gh-sep" aria-hidden="true"></div>

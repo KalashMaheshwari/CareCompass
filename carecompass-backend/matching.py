@@ -17,6 +17,7 @@ def match_caregivers(
     required_role = {
         "nurse_home_visit": "nurse",
         "paramedic_home_visit": "paramedic",
+        "gp_teleconsult": "doctor",
     }.get(care_type)
 
     if required_role is None:

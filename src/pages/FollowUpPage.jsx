@@ -175,7 +175,7 @@ export const FollowUpPage = () => {
       } else if (response.follow_up_question && response.status !== 'recommendation' && updatedHistory.length < 10) {
         setShowCustomInput(false);
         setCustomText('');
-        setSelectedOptions([]);
+        setSelectedOption(null);
       } else {
         navigate('/result');
       }

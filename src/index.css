@@ -1892,10 +1892,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .footer-brand-logo {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+  height: 40px;
+  width: auto;
+  max-width: 180px;
   object-fit: contain;
+  display: block;
 }
 
 .footer-brand-name {

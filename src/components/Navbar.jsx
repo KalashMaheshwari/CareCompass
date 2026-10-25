@@ -67,11 +67,12 @@ export default function Navbar() {
         .nav-brand:hover { opacity: .8; }
 
         .nav-logo-img {
-          width: 30px;
-          height: 30px;
+          height: 38px;
+          width: auto;
+          max-height: 42px;
           object-fit: contain;
           flex-shrink: 0;
-          border-radius: 6px;
+          display: block;
         }
 
         .nav-brand-text {
@@ -324,6 +325,7 @@ export default function Navbar() {
         
         @media (max-width: 600px) {
           .nav-inner { padding: 0 16px; height: 52px; gap: 12px; }
+          .nav-logo-img { height: 32px; }
           .nav-badge { display: none; }
           .nav-112 span { display: none; }
           .nav-112 { width: 36px; height: 36px; padding: 0; justify-content: center; border-radius: 8px; }
@@ -337,16 +339,13 @@ export default function Navbar() {
           className="nav-brand" 
           onClick={() => navigate('/')}
           title="CareCompass — Go to Home"
+          aria-label="CareCompass — Go to Home"
         >
           <img 
             src="/logo.png" 
             alt="CareCompass Logo" 
             className="nav-logo-img"
           />
-          <div className="nav-brand-text">
-            <span className="nav-title">Care<span className="nav-title-accent">Compass</span></span>
-            <span className="nav-badge">{t('brand_badge') || 'HEALTH NAVIGATOR'}</span>
-          </div>
         </button>
 
         <div className="nav-divider" aria-hidden="true"></div>

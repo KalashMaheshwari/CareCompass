@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
 from dotenv import load_dotenv
@@ -9,6 +10,8 @@ import os
 import re
 import time
 import tempfile
+import requests
+import httpx
 from pathlib import Path
 
 
@@ -29,6 +32,7 @@ load_dotenv(PROJECT_DIR / ".env")
 load_dotenv(BASE_DIR / ".env")
 
 GROQ_API_KEY = os.getenv("groq")
+SARVAM_API_KEY = os.getenv("SARVAM_API_KEY") or os.getenv("sarvam")
 GROQ_MODEL = os.getenv(
     "GROQ_MODEL",
     "llama-3.3-70b-versatile"
@@ -46,6 +50,14 @@ app = FastAPI(
         "emergency escalation, and caregiver matching."
     ),
     version="1.1.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -727,35 +739,190 @@ def emergency_response(reason: str, lang: str = "en") -> dict:
 
 
 # --------------------------------------------------
-# DIRECT ASSISTANCE / NURSE CARE ROUTING
+# DIRECT DEMAND ROUTING (APPOINTMENTS & NURSE CARE)
 # --------------------------------------------------
 
+DIRECT_APPOINTMENT_PATTERNS = [
+    r"\binstant\s+appointment(s)?\b",
+    r"\bbook\s+(an?\s+)?appointment\b",
+    r"\burgent\s+appointment(s)?\b",
+    r"\bimmediate\s+appointment(s)?\b",
+    r"\bdoctor\s+appointment(s)?\b",
+    r"\bneed\s+(an?\s+)?appointment\b",
+    r"\bwant\s+(an?\s+)?appointment\b",
+    r"\bschedule\s+(an?\s+)?appointment\b",
+    r"\bget\s+(an?\s+)?appointment\b",
+    r"\bteleconsult(ation)?\b",
+    r"\bvideo\s+consult(ation)?\b",
+    r"\bdoctor\s+consult(ation)?\b",
+    r"\bconsult\s+(a\s+)?doctor\b",
+    r"\bspeak\s+(with|to)\s+(a\s+)?doctor\b",
+    r"\btalk\s+(with|to)\s+(a\s+)?doctor\b",
+    r"\bconnect\s+(with|to)\s+(a\s+)?doctor\b",
+    r"\bneed\s+(a\s+)?doctor\b",
+    r"\bwant\s+(a\s+)?doctor\b",
+    r"\bsee\s+(a\s+)?doctor\b",
+    r"\bcall\s+(a\s+)?doctor\b",
+    r"\binstant\s+consult\b",
+    r"\binstant\s+doctor\b",
+    r"appointment\s+chahiye",
+    r"doctor\s+chahiye",
+    r"doctor\s+se\s+baat",
+    r"doctor\s+se\s+milna",
+    r"doctor\s+dikhana",
+    r"appointment\s+book\s*(karo|karna|karana|karni)?",
+    r"turant\s+appointment",
+    r"turant\s+doctor",
+    r"doctor\s+ko\s+dikhana",
+    r"डॉक्टर\s+अपॉइंटमेंट",
+    r"अपॉइंटमेंट\s+चाहिए",
+    r"डॉक्टर\s+चाहिए",
+    r"डॉक्टर\s+से\s+बात",
+]
+
 ASSISTANCE_PATTERNS = [
+    r"\bnurse\s+assistance\b",
     r"\bneed\s+assistance\b",
+    r"\bassistance\s+needed\b",
     r"\bneed\s+(a\s+)?nurse\b",
     r"\bbook\s+(a\s+)?nurse\b",
     r"\bwant\s+(a\s+)?nurse\b",
     r"\bsend\s+(a\s+)?nurse\b",
     r"\bhome\s+nurse\b",
+    r"\bnurse\s+at\s+home\b",
+    r"\bnurse\s+visit\b",
+    r"\bnurse\s+home\s+visit\b",
+    r"\bnurse\s+help\b",
+    r"\bnurse\s+support\b",
     r"\bcaregiver\b",
-    r"\bassistance\s+needed\b",
     r"\bbedridden\b",
+    r"\bbedside\s+(care|assistance|monitoring)\b",
     r"\bblood\s+test\s+(chahiye|needed|karna|karwana)\b",
     r"\bneed\s+(a\s+)?blood\s+test\b",
     r"\bsample\s+collection\b",
     r"nurse\s+chahiye",
+    r"nurse\s+assistance\s+chahiye",
+    r"nurse\s+sahayata",
+    r"nurse\s+madad",
     r"nurse\s+bhej\s+(do|dijiye)",
     r"madad\s+chahiye",
     r"sahayata\s+chahiye",
     r"ghar\s+par\s+nurse",
     r"ghar\s+par\s+dekhbhal",
     r"elderly\s+care",
+    r"नर्स\s+चाहिए",
+    r"नर्स\s+सहायता",
+    r"घर\s+पर\s+नर्स",
 ]
+
+
+def detect_direct_appointment_request(text: str) -> bool:
+    normalized = re.sub(r"\s+", " ", text.lower()).strip()
+    return any(re.search(pat, normalized) for pat in DIRECT_APPOINTMENT_PATTERNS)
 
 
 def detect_direct_assistance_request(text: str) -> bool:
     normalized = re.sub(r"\s+", " ", text.lower()).strip()
     return any(re.search(pat, normalized) for pat in ASSISTANCE_PATTERNS)
+
+
+def appointment_response(lang: str = "en") -> dict:
+    if lang == "hi":
+        return {
+            "status": "recommendation",
+            "follow_up_question": None,
+            "options": [],
+            "other_option_placeholder": None,
+            "care_type": "gp_teleconsult",
+            "urgency": "immediate",
+            "red_flags": [],
+            "reasoning": (
+                "आपने तत्काल डॉक्टर अपॉइंटमेंट और टेलीकंसल्टेशन का अनुरोध किया है। बिना किसी इंतज़ार या अतिरिक्त प्रश्नों के, "
+                "आपको तत्काल उपलब्ध प्रमाणित जनरल फिजिशियन से सीधे जोड़ा जा रहा है।"
+            ),
+            "next_steps": [
+                "कदम 1: नीचे दिए गए सत्यापित डॉक्टरों में से तुरंत वीडियो या ऑडियो टेलीकंसल्टेशन स्लॉट चुनें।",
+                "कदम 2: अपने लक्षण, तापमान व पुरानी दवाइयों/पर्चों की जानकारी तैयार रखें।",
+                "कदम 3: सुरक्षित वीडियो या फ़ोन कॉल पर डॉक्टर से सीधा परामर्श लेकर क्लिनिकल सलाह और डिजिटल पर्चा प्राप्त करें।"
+            ],
+            "home_care": [
+                "परामर्श के लिए शांत और आरामदायक कमरे में बैठें।",
+                "डॉक्टर से पूछने के लिए अपने मुख्य लक्षण और सवाल एक जगह नोट कर लें।",
+                "पर्याप्त मात्रा में गुनगुना पानी पिएं और आराम करें।"
+            ],
+            "warning_signs": [
+                "अचानक छाती में दबाव या सांस लेने में भारी तकलीफ",
+                "बेहोशी, भ्रम या अत्यधिक चक्कर आना",
+                "किसी भी गंभीर आपातकाल में तुरंत 112 पर कॉल करें"
+            ],
+            "recommended_tests": [],
+            "nurse_care_option": None,
+            "caregivers": []
+        }
+    elif lang == "hinglish":
+        return {
+            "status": "recommendation",
+            "follow_up_question": None,
+            "options": [],
+            "other_option_placeholder": None,
+            "care_type": "gp_teleconsult",
+            "urgency": "immediate",
+            "red_flags": [],
+            "reasoning": (
+                "Aapne instant doctor appointment aur teleconsultation ki demand ki hai. "
+                "Bina kisi follow-up delay ke, aapko directly certified general physicians aur teleconsult doctors ke sath route kar diya gaya hai."
+            ),
+            "next_steps": [
+                "Step 1: Niche listed available doctors mein se turant instant consultation slot select karein.",
+                "Step 2: Apne symptoms aur previous medicines/prescriptions ki details ready rakhein.",
+                "Step 3: Secure video ya audio call par doctor se connect karke instant verified digital prescription paayein."
+            ],
+            "home_care": [
+                "Consultation ke liye shaant aur comfortable jagah par baithein.",
+                "Doctor se poochhne ke liye apne sawal note kar lein.",
+                "Hydration maintain karein aur resting posture mein rahein."
+            ],
+            "warning_signs": [
+                "Achanak seene mein tez dabav ya saans phoolna",
+                "Loss of consciousness ya extreme dizziness",
+                "Kisi bhi gambhir aapatkaal mein turant 112 par call karein"
+            ],
+            "recommended_tests": [],
+            "nurse_care_option": None,
+            "caregivers": []
+        }
+    else:
+        return {
+            "status": "recommendation",
+            "follow_up_question": None,
+            "options": [],
+            "other_option_placeholder": None,
+            "care_type": "gp_teleconsult",
+            "urgency": "immediate",
+            "red_flags": [],
+            "reasoning": (
+                "You requested an instant doctor appointment / teleconsultation. "
+                "Without requiring further follow-up questions, your request has been directly routed to certified general physicians available for immediate consultation."
+            ),
+            "next_steps": [
+                "Step 1: Select an instant video or audio consultation slot from the verified physicians below.",
+                "Step 2: Keep your symptom timeline and any current medications handy.",
+                "Step 3: Connect directly with the doctor to receive clinical evaluation and a digital prescription."
+            ],
+            "home_care": [
+                "Sit in a quiet, well-lit room for your video consultation.",
+                "Write down your key symptoms and questions for the doctor.",
+                "Remain comfortably seated and hydrated."
+            ],
+            "warning_signs": [
+                "Sudden crushing chest pain or severe shortness of breath",
+                "Sudden weakness, confusion, or loss of consciousness",
+                "Call 112 immediately for acute emergency care"
+            ],
+            "recommended_tests": [],
+            "nurse_care_option": None,
+            "caregivers": []
+        }
 
 
 def assistance_response(lang: str = "en") -> dict:
@@ -949,68 +1116,127 @@ def health_check():
     return {"status": "healthy"}
 
 
-@app.post("/api/transcribe")
-async def transcribe_audio(
-    file: UploadFile = File(...),
-    language: Optional[str] = Form(None)
+SARVAM_URL = "https://api.sarvam.ai/speech-to-text"
+MAX_BYTES = 5 * 1024 * 1024  # 5MB limit for short clips
+
+# App language -> (Sarvam language_code, mode)
+SARVAM_LANG_MAP = {
+    "en":       ("en-IN", "transcribe"),
+    "hi":       ("hi-IN", "transcribe"),
+    "hinglish": ("hi-IN", "codemix"),
+    "auto":     ("unknown", "transcribe"),
+}
+
+@app.post("/stt")
+async def stt(
+    audio: Optional[UploadFile] = File(None),
+    file: Optional[UploadFile] = File(None),
+    language: str = Form("auto")
 ):
     """
-    Multilingual Speech-to-Text powered by Groq Whisper (whisper-large-v3-turbo).
-    Provides lightning-fast, high-accuracy speech transcription for Hindi, English, and Hinglish.
+    Sarvam AI Speech-to-Text (saaras:v3) endpoint with Whisper fallback.
+    Accepts either 'audio' or 'file' multipart parameter for maximum compatibility.
     """
-    if not GROQ_API_KEY:
-        raise HTTPException(status_code=500, detail="GROQ_API_KEY not configured for speech-to-text.")
+    upload = audio or file
+    if not upload:
+        raise HTTPException(400, "No audio file provided")
 
-    try:
-        audio_bytes = await file.read()
-        if not audio_bytes:
-            return {"text": "", "error": "Empty audio payload", "success": False}
+    data = await upload.read()
+    if not data:
+        raise HTTPException(400, "empty_audio")
+    if len(data) > MAX_BYTES:
+        raise HTTPException(413, "audio_too_large")
 
-        suffix = Path(file.filename or "speech.webm").suffix or ".webm"
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    key = os.environ.get("SARVAM_API_KEY") or SARVAM_API_KEY
+    lang_key = (language or "auto").lower().strip()
+    code, mode = SARVAM_LANG_MAP.get(lang_key, SARVAM_LANG_MAP["auto"])
+    raw_content_type = (upload.content_type or "audio/webm").split(";")[0].strip()
+    # Normalize mime-types accepted by Sarvam API
+    content_type = "audio/webm" if "webm" in raw_content_type else ("audio/mp4" if "mp4" in raw_content_type or "m4a" in raw_content_type else "audio/wav")
+    filename = upload.filename or ("speech.m4a" if "mp4" in content_type else "speech.webm")
+
+    # 1. Primary: Sarvam AI STT
+    if key:
         try:
-            temp_file.write(audio_bytes)
-            temp_file.flush()
-            temp_path = temp_file.name
-        finally:
-            temp_file.close()
-
-        try:
-            whisper_lang = None
-            if language in ("hi", "hindi"):
-                whisper_lang = "hi"
-            elif language in ("en", "english"):
-                whisper_lang = "en"
-
-            with open(temp_path, "rb") as af:
-                transcription = client.audio.transcriptions.create(
-                    model="whisper-large-v3-turbo",
-                    file=af,
-                    language=whisper_lang,
-                    response_format="json"
+            async with httpx.AsyncClient(timeout=20.0) as http_client:
+                r = await http_client.post(
+                    SARVAM_URL,
+                    headers={"api-subscription-key": key},
+                    data={"model": "saaras:v3", "language_code": code, "mode": mode},
+                    files={"file": (filename, data, content_type)},
                 )
+            if r.status_code == 200:
+                j = r.json()
+                transcript = (j.get("transcript") or "").strip()
+                detected_lang = j.get("language_code") or code
+                safe_log = transcript[:80].encode("ascii", errors="replace").decode("ascii")
+                print(f"[Sarvam STT saaras:v3] Transcribed ({detected_lang}): {safe_log}")
+                return {
+                    "transcript": transcript,
+                    "text": transcript,
+                    "language": detected_lang,
+                    "engine": "sarvam",
+                    "success": True
+                }
+            else:
+                safe_err = r.text[:200].encode("ascii", errors="replace").decode("ascii")
+                print(f"[Sarvam STT Warning] HTTP {r.status_code}: {safe_err}. Trying Whisper...")
+        except httpx.HTTPError as he:
+            print(f"[Sarvam STT Network Error] {he}. Trying Whisper fallback...")
 
-            text_out = transcription.text.strip() if hasattr(transcription, "text") else str(transcription).strip()
-            print(f"[STT] Transcribed successfully ({whisper_lang or 'auto'}): {text_out[:80]}")
-            return {
-                "text": text_out,
-                "language": whisper_lang or "auto",
-                "success": True
-            }
-        finally:
-            if os.path.exists(temp_path):
-                try:
-                    os.remove(temp_path)
-                except Exception:
-                    pass
+    # 2. Failover: Groq Whisper
+    if GROQ_API_KEY and client:
+        try:
+            suffix = Path(filename).suffix or ".webm"
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+            try:
+                temp_file.write(data)
+                temp_file.flush()
+                temp_path = temp_file.name
+            finally:
+                temp_file.close()
 
-    except Exception as e:
-        print(f"[STT Error] Transcription failed: {e}")
-        return {
-            "text": "",
-            "error": str(e),
-            "success": False
-        }
+            try:
+                whisper_lang = "hi" if lang_key in ("hi", "hinglish") else ("en" if lang_key == "en" else None)
+                with open(temp_path, "rb") as af:
+                    transcription = client.audio.transcriptions.create(
+                        model="whisper-large-v3-turbo",
+                        file=af,
+                        language=whisper_lang,
+                        response_format="json"
+                    )
+                transcript = transcription.text.strip() if hasattr(transcription, "text") else str(transcription).strip()
+                safe_log = transcript[:80].encode("ascii", errors="replace").decode("ascii")
+                print(f"[Whisper STT Fallback] Transcribed: {safe_log}")
+                return {
+                    "transcript": transcript,
+                    "text": transcript,
+                    "language": whisper_lang or "auto",
+                    "engine": "whisper",
+                    "success": True
+                }
+            finally:
+                if os.path.exists(temp_path):
+                    try:
+                        os.remove(temp_path)
+                    except Exception:
+                        pass
+        except Exception as we:
+            print(f"[Whisper Fallback Error] {we}")
+
+    if not key and not GROQ_API_KEY:
+        raise HTTPException(500, "stt_not_configured")
+
+    raise HTTPException(502, "stt_failed")
+
+
+@app.post("/api/transcribe")
+async def transcribe_alias(
+    audio: Optional[UploadFile] = File(None),
+    file: Optional[UploadFile] = File(None),
+    language: str = Form("auto")
+):
+    return await stt(audio=audio, file=file, language=language)
 
 
 # --------------------------------------------------
@@ -1053,7 +1279,17 @@ def assess_symptoms(request: SymptomRequest):
         print("Safety screen triggered: Emergency referral dispatched.")
         return result
 
-    # 3. Direct Assistance / Nurse Request Screen
+    # 3. Direct Service Demand Screens (Instant Appointments & Nurse Assistance - ZERO Follow-ups)
+    if detect_direct_appointment_request(patient_text):
+        result = appointment_response(lang=lang)
+        result["caregivers"] = match_caregivers(
+            care_type="gp_teleconsult",
+            language=lang,
+        )
+        save_assessment(result)
+        print("Direct appointment request triggered: Instant GP teleconsult dispatched immediately without follow-up questions.")
+        return result
+
     if detect_direct_assistance_request(patient_text):
         result = assistance_response(lang=lang)
         result["caregivers"] = match_caregivers(
@@ -1061,7 +1297,7 @@ def assess_symptoms(request: SymptomRequest):
             language=lang,
         )
         save_assessment(result)
-        print("Direct assistance request triggered: Nurse home visit dispatched immediately.")
+        print("Direct assistance request triggered: Nurse home visit dispatched immediately without follow-up questions.")
         return result
 
     # 4. Check Groq API
@@ -1077,17 +1313,19 @@ def assess_symptoms(request: SymptomRequest):
     workflow_instructions = f"""
 {language_directive}
 
-DYNAMIC ADAPTIVE FOLLOW-UP RULES (MAX {MAX_FOLLOW_UP_QUESTIONS}, PREFER ~{PREFERRED_FOLLOW_UP_QUESTIONS}):
-1. PROGRESS: Turn #{current_question_number} (Completed so far: {follow_up_count} questions).
-2. EARLY CLINICAL CLEARANCE MANDATE:
-   - If you now have sufficient clarity of what to do (e.g. mild condition confirmed safe, emergency escalation, or nurse assistance need), YOU MUST RETURN `status: "recommendation"` IMMEDIATELY, even if this is only question 1, 2, or 3! Set `follow_up_question: null` and `options: []`.
-   - Provide complete actionable guidance (`reasoning`, `next_steps`, `home_care`, `warning_signs`, `recommended_tests`, `nurse_care_option`).
-3. ASKING A FOLLOW-UP QUESTION:
-   - ONLY return `status: "follow_up_needed"` if there is genuine ambiguity, an unruled red flag, or vital missing detail.
-   - Keep question strictly atomic (EXACTLY ONE question mark ?).
-   - Aim for around ~{PREFERRED_FOLLOW_UP_QUESTIONS} questions when clarification is genuinely needed.
-4. HARD CEILING AT {MAX_FOLLOW_UP_QUESTIONS} QUESTIONS:
-   - If {MAX_FOLLOW_UP_QUESTIONS} questions have been reached, you MUST NOT ask any more questions. Set `status: "recommendation"`.
+DYNAMIC MULTI-TURN CLINICAL INTAKE RULES:
+1. PROGRESS: Turn #{current_question_number} (Questions answered so far: {follow_up_count} of target {PREFERRED_FOLLOW_UP_QUESTIONS}).
+2. MULTI-TURN INTAKE MANDATE (DO NOT STOP AFTER 1 QUESTION):
+   - For all health concerns and symptom queries (sore throat, fever, cough, stomach ache, fatigue, etc.), you MUST ask follow-up questions to understand the entire clinical picture before giving a final recommendation!
+   - DO NOT return `status: "recommendation"` on turn 0, 1, or 2 unless an acute life-threatening emergency is detected.
+   - You must gather the complete clinical info across sequential turns:
+     * Question 1: Nature of discomfort, sensation, and onset.
+     * Question 2: Associated symptoms, fever, chills, and body aches.
+     * Question 3: Functional & safety red flags (breathing ease, swallowing, hydration, lethargy).
+     * Question 4: Duration, previous remedies tried, and underlying health conditions.
+   - When asking a follow-up question, return `status: "follow_up_needed"`, an atomic question with exactly one '?', and 3-4 multi-select compatible options.
+3. FINAL RECOMMENDATION AT TURN ~{PREFERRED_FOLLOW_UP_QUESTIONS}:
+   - Once {PREFERRED_FOLLOW_UP_QUESTIONS} questions have been answered, synthesize ALL previous answers and deliver the comprehensive, personalized recommendation. Set `status: "recommendation"`, `follow_up_question: null`, and `options: []`.
 """
 
     messages = [
@@ -1097,31 +1335,47 @@ DYNAMIC ADAPTIVE FOLLOW-UP RULES (MAX {MAX_FOLLOW_UP_QUESTIONS}, PREFER ~{PREFER
         }
     ]
 
-    for turn in request.conversation_history[-8:]:
-        if turn.role in ("user", "assistant"):
+    for turn in request.conversation_history:
+        if turn.role in ("user", "assistant") and turn.content:
             messages.append({
                 "role": turn.role,
                 "content": turn.content,
             })
 
-    current_user_msg = (
-        f"Language: {lang}\n"
-        f"Patient input: {message}\n"
-        f"Location: {request.location or 'Delhi NCR'}\n\n"
-        f"Progress: Question {current_question_number} of {MAX_FOLLOW_UP_QUESTIONS}.\n"
-        "Return the required JSON only."
-    )
+    if follow_up_count == 0:
+        current_user_msg = (
+            f"Language: {lang}\n"
+            f"Initial patient symptoms: {message}\n"
+            f"Location: {request.location or 'Delhi NCR'}\n\n"
+            f"Progress: Question 1 of {PREFERRED_FOLLOW_UP_QUESTIONS}.\n"
+            "Ask the first atomic clarifying question about the nature, sensation, or onset of this symptom.\n"
+            "Return the required JSON only."
+        )
+    else:
+        current_user_msg = (
+            f"Language: {lang}\n"
+            f"Latest patient answer: {message}\n"
+            f"Location: {request.location or 'Delhi NCR'}\n\n"
+            f"Progress: {follow_up_count} of {PREFERRED_FOLLOW_UP_QUESTIONS} follow-up questions completed.\n"
+            + (
+                f"Ask the next atomic clarifying question building upon the previous answers.\n"
+                if follow_up_count < PREFERRED_FOLLOW_UP_QUESTIONS
+                else "You now have the complete clinical information. Synthesize all answers into the final comprehensive recommendation.\n"
+            )
+            + "Return the required JSON only."
+        )
+
     messages.append({
         "role": "user",
         "content": current_user_msg,
     })
 
-    # 5. Call Groq with Multi-Model Failover and 4s Timeout
+    # 5. Call Groq with Multi-Model Failover and 8s Timeout
     result = None
     last_error = None
-    client = Groq(api_key=GROQ_API_KEY, timeout=4.0)
+    client = Groq(api_key=GROQ_API_KEY, timeout=8.0)
 
-    candidate_models = ["qwen/qwen3.8-27b", "openai/gpt-oss-120b"]
+    candidate_models = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]
 
     for attempt, model_name in enumerate(candidate_models):
         try:
@@ -1140,18 +1394,18 @@ DYNAMIC ADAPTIVE FOLLOW-UP RULES (MAX {MAX_FOLLOW_UP_QUESTIONS}, PREFER ~{PREFER
             last_error = error
             print(f"Groq model {model_name} attempt error: {str(error)[:120]}")
             if attempt < len(candidate_models) - 1:
-                time.sleep(0.5)
+                time.sleep(0.3)
 
     # Fallback to local clinical synthesizer if Groq is unavailable
     if result is None or not isinstance(result, dict):
         print("Groq inference fallback engaged:", str(last_error))
         result = {
-            "status": "follow_up_needed" if follow_up_count < MAX_FOLLOW_UP_QUESTIONS else "recommendation",
+            "status": "follow_up_needed" if follow_up_count < PREFERRED_FOLLOW_UP_QUESTIONS else "recommendation",
             "follow_up_question": None,
             "options": [],
             "other_option_placeholder": DEFAULT_OTHER_PLACEHOLDERS.get(lang),
-            "care_type": None if follow_up_count < MAX_FOLLOW_UP_QUESTIONS else "gp_teleconsult",
-            "urgency": None if follow_up_count < MAX_FOLLOW_UP_QUESTIONS else "routine",
+            "care_type": None if follow_up_count < PREFERRED_FOLLOW_UP_QUESTIONS else "gp_teleconsult",
+            "urgency": None if follow_up_count < PREFERRED_FOLLOW_UP_QUESTIONS else "routine",
             "red_flags": [],
             "reasoning": "",
             "next_steps": [],
@@ -1172,24 +1426,16 @@ DYNAMIC ADAPTIVE FOLLOW-UP RULES (MAX {MAX_FOLLOW_UP_QUESTIONS}, PREFER ~{PREFER
         save_assessment(result)
         return result
 
-    # 7. PROCESS AI DECISION & EARLY CLINICAL CLEARANCE
+    # 7. PROCESS AI DECISION & ENFORCE MULTI-TURN INTAKE
     ai_status = (result.get("status") or "").strip().lower()
     q_text = (result.get("follow_up_question") or "").strip()
     has_valid_question = bool(q_text and "?" in q_text and len(q_text) >= 8)
 
-    # Determine whether clinical clearance has occurred:
-    # 1. AI decided to deliver recommendation (early clearance at Q1, Q2, etc.)
-    # 2. Hard ceiling reached (MAX_FOLLOW_UP_QUESTIONS completed)
-    # 3. AI provided care pathway without asking a question
-    # 4. Fallback engaged after preferred question count reached
-    is_recommendation = (
-        ai_status == "recommendation"
-        or follow_up_count >= MAX_FOLLOW_UP_QUESTIONS
-        or (not has_valid_question and follow_up_count >= PREFERRED_FOLLOW_UP_QUESTIONS)
-        or (result.get("care_type") and not has_valid_question)
-    )
+    # We must collect the entire info across questions before giving recommendations
+    should_ask_follow_up = follow_up_count < PREFERRED_FOLLOW_UP_QUESTIONS
 
-    if is_recommendation:
+    if not should_ask_follow_up:
+        # Full clinical picture collected -> deliver comprehensive recommendation
         result["status"] = "recommendation"
         result["follow_up_question"] = None
         result["options"] = []
@@ -1222,7 +1468,7 @@ DYNAMIC ADAPTIVE FOLLOW-UP RULES (MAX {MAX_FOLLOW_UP_QUESTIONS}, PREFER ~{PREFER
             result["nurse_care_option"] = fallback_rec["nurse_care_option"]
 
     else:
-        # Still clarifying: follow-up question needed
+        # Still clarifying: enforce follow-up question to take entire info
         result["status"] = "follow_up_needed"
         result["care_type"] = None
         result["urgency"] = None
@@ -1243,7 +1489,7 @@ DYNAMIC ADAPTIVE FOLLOW-UP RULES (MAX {MAX_FOLLOW_UP_QUESTIONS}, PREFER ~{PREFER
     result["caregivers"] = []
     if result["status"] == "recommendation":
         care_type = result.get("care_type")
-        if care_type in {"nurse_home_visit", "paramedic_home_visit"}:
+        if care_type in {"nurse_home_visit", "paramedic_home_visit", "gp_teleconsult"}:
             result["caregivers"] = match_caregivers(
                 care_type=care_type,
                 language=lang,

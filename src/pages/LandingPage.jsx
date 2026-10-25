@@ -32,17 +32,30 @@ export const LandingPage = () => {
   const { t, language, navigate, setTriageData, activePatient } = useApp();
   const [typedInput, setTypedInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [clientRedFlag, setClientRedFlag] = useState(null);
   const inputRef = useRef(null);
 
   // Pure language-specific texts for intake box, exclusively controlled by language switcher
-  const getIntakeTexts = (lang, recording) => {
+  const getIntakeTexts = (lang, recording, transcribing) => {
+    if (transcribing) {
+      return {
+        cardTitle: lang === 'hi' ? 'मरीज़ देखभाल एवं लक्षण मूल्यांकन' : 'Patient Care & Symptom Assessment',
+        micMain: lang === 'hi' ? 'सर्वम एआई द्वारा ट्रांसक्राइब जारी है...' : (lang === 'hinglish' ? 'Sarvam AI transcribe kar raha hai...' : 'Transcribing with Sarvam AI...'),
+        micSub: 'Sarvam AI Speech Model (saaras:v4)',
+        divider: lang === 'hi' ? 'या लिखकर बताएँ' : (lang === 'hinglish' ? 'ya likh kar batayein' : 'or type symptoms'),
+        placeholder: lang === 'hi' ? 'मरीज़ के लक्षणों के बारे में विस्तार से लिखें...' : (lang === 'hinglish' ? 'Patient ke symptoms detail mein likhein...' : 'Describe patient symptoms in detail...'),
+        trust: 'Hospital-Grade Confidentiality · DPDP Act 2023',
+        submit: lang === 'hi' ? 'क्लिनिकल मूल्यांकन शुरू करें' : (lang === 'hinglish' ? 'Clinical Evaluation Shuru Karein' : 'Begin Clinical Evaluation'),
+        evaluating: 'Evaluating Clinical Triage...'
+      };
+    }
     if (lang === 'hi') {
       return {
         cardTitle: 'मरीज़ देखभाल एवं लक्षण मूल्यांकन',
-        micMain: recording ? 'सुन रहे हैं... बोलिए' : 'बोलने के लिए दबाएँ',
-        micSub: recording ? 'बोलना समाप्त करने के लिए दबाएँ' : 'वॉयस स्पीच प्रोसेसिंग',
+        micMain: recording ? 'सुन रहे हैं... बोलिए' : 'बोलने के लिए दबाएँ (Sarvam AI)',
+        micSub: recording ? 'बोलना समाप्त करने के लिए दोबारा दबाएँ' : 'Sarvam Indian Speech Recognition',
         divider: 'या लिखकर बताएँ',
         placeholder: 'मरीज़ के लक्षणों के बारे में विस्तार से लिखें (जैसे तेज़ बुखार, गले में खराश, या साँस लेने में तकलीफ़)...',
         trust: 'अस्पताल-स्तरीय गोपनीयता · DPDP अधिनियम 2023',
@@ -53,8 +66,8 @@ export const LandingPage = () => {
     if (lang === 'hinglish') {
       return {
         cardTitle: 'Patient Care & Symptom Assessment',
-        micMain: recording ? 'Sun rahe hain... boliye' : 'Bolne ke liye dabayein',
-        micSub: recording ? 'Bolna khatam karne ke liye dabayein' : 'Voice Speech Recognition',
+        micMain: recording ? 'Sun rahe hain... boliye' : 'Bolne ke liye dabayein (Sarvam AI)',
+        micSub: recording ? 'Bolna khatam karne ke liye dabayein' : 'Sarvam Indian Speech Recognition',
         divider: 'ya likh kar batayein',
         placeholder: 'Patient ke symptoms detail mein likhein (e.g. Papa ko kal raat se tez bukhar hai aur gale mein kharash hai)...',
         trust: 'Hospital-Grade Privacy · DPDP Act 2023',
@@ -65,8 +78,8 @@ export const LandingPage = () => {
     // Default to English
     return {
       cardTitle: 'Patient Care & Symptom Assessment',
-      micMain: recording ? 'Listening... Speak now' : 'Tap to Speak',
-      micSub: recording ? 'Tap anywhere to finish speaking' : 'Voice Speech Recognition',
+      micMain: recording ? 'Listening... Speak now' : 'Tap to Speak (Sarvam AI)',
+      micSub: recording ? 'Tap anywhere to finish speaking' : 'Sarvam Indian Speech Recognition',
       divider: 'or type symptoms',
       placeholder: 'Describe patient symptoms in detail (e.g. High fever, sore throat, or difficulty breathing)...',
       trust: 'Hospital-Grade Confidentiality · DPDP Act 2023',
@@ -75,7 +88,7 @@ export const LandingPage = () => {
     };
   };
 
-  const intakeTexts = getIntakeTexts(language, isRecording);
+  const intakeTexts = getIntakeTexts(language, isRecording, isTranscribing);
 
   // Live red-flag screening as patient types
   useEffect(() => {
@@ -96,10 +109,18 @@ export const LandingPage = () => {
           setTypedInput(transcript);
           if (isFinal) {
             setIsRecording(false);
+            setIsTranscribing(false);
           }
         },
-        onError: () => setIsRecording(false),
-        onEnd: () => setIsRecording(false)
+        onTranscribing: (val) => setIsTranscribing(val),
+        onError: () => {
+          setIsRecording(false);
+          setIsTranscribing(false);
+        },
+        onEnd: () => {
+          setIsRecording(false);
+          setIsTranscribing(false);
+        }
       });
     }
   };

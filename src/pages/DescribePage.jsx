@@ -155,8 +155,10 @@ export const DescribePage = ({ startListening = false, presetText = '' }) => {
         ? 'बोलना जारी रखें... समाप्त होने पर टैप करें'
         : (language === 'hinglish'
             ? 'Bolte rahein... bolna khatam hone par tap karein'
-            : 'Speak naturally in Hindi or English... tap when finished'))
-    : 'Multilingual STT (Hindi & English active)';
+            : 'Speak naturally in Hindi, Hinglish, or English... tap when finished'))
+    : (micStatus === 'transcribing'
+        ? 'Samajh rahe hain... (Transcribing with Sarvam AI saaras:v3)'
+        : 'Multilingual STT (Powered by Sarvam AI saaras:v3)');
 
   return (
     <div className="dp-page">
@@ -424,7 +426,7 @@ export const DescribePage = ({ startListening = false, presetText = '' }) => {
             <span className="dp-mic-cap">
               {micStatus === 'listening'
                 ? t('finish_speaking')
-                : (micStatus === 'transcribing' ? 'Transcribing...' : t('start_recording'))}
+                : (micStatus === 'transcribing' ? 'Samajh rahe hain...' : t('start_recording'))}
             </span>
           </div>
 
@@ -433,7 +435,7 @@ export const DescribePage = ({ startListening = false, presetText = '' }) => {
               <span className={`dp-dot ${micStatus === 'listening' ? 'is-live' : ''} ${micStatus === 'transcribing' ? 'is-busy' : ''}`} />
               {micStatus === 'listening'
                 ? t('voice_recording')
-                : (micStatus === 'transcribing' ? 'Transcribing audio...' : t('voice_ready'))}
+                : (micStatus === 'transcribing' ? 'Samajh rahe hain...' : t('voice_ready'))}
             </div>
             <p className="dp-hint">{sttHint}</p>
 
@@ -504,7 +506,7 @@ export const DescribePage = ({ startListening = false, presetText = '' }) => {
             id="submit-triage-button"
             type="button"
             className="dp-submit"
-            disabled={!inputTranscript.trim() || isEvaluating}
+            disabled={!inputTranscript.trim() || isEvaluating || micStatus === 'listening' || micStatus === 'transcribing'}
             onClick={handleSendTriage}
           >
             {isEvaluating ? (
