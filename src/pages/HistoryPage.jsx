@@ -38,7 +38,7 @@ export const HistoryPage = () => {
     <div style={{ width: '100%' }}>
       <div className="flex-between" style={{ marginBottom: '20px' }}>
         <div>
-          <h2 style={{ fontSize: '1.75rem', marginBottom: '4px' }}>Clinical Dispatch History</h2>
+          <h2 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: '2rem', fontWeight: 600, color: '#101e33', marginBottom: '4px' }}>Clinical Dispatch History</h2>
           <p style={{ fontSize: '0.92rem', color: 'var(--text-muted)' }}>
             Historical triage sessions and caregiver dispatches. Informs future triage without recording fixed diagnoses.
           </p>
@@ -96,7 +96,7 @@ export const HistoryPage = () => {
                   "{item.user_input}"
                 </p>
 
-                <div style={{ fontSize: '0.82rem', color: '#0d9488', fontWeight: 600, marginBottom: '8px' }}>
+                <div style={{ fontSize: '0.82rem', color: '#3f64ae', fontWeight: 700, marginBottom: '8px' }}>
                   Outcome: {(item.decision?.care_type || 'nurse').replace('_', ' ').toUpperCase()}
                 </div>
               </div>

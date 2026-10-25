@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, ArrowLeft, Mic, Trash2, ShieldCheck, Heart, User } from 'lucide-react';
+import { Save, ArrowLeft, Mic, Trash2, ShieldCheck, Heart, User, Check, Plus } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { dataService } from '../services/supabase';
 import { speechService } from '../services/speech';
@@ -131,7 +131,7 @@ export const PatientEditPage = ({ memberId = null }) => {
           <span>Back to Profiles</span>
         </button>
 
-        <h2 style={{ fontSize: '1.5rem', margin: 0 }}>
+        <h2 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: '1.8rem', fontWeight: 600, color: '#101e33', margin: 0 }}>
           {memberId && memberId !== 'new' ? 'Edit Medical Profile' : 'New Family Medical Profile'}
         </h2>
 
@@ -236,11 +236,11 @@ export const PatientEditPage = ({ memberId = null }) => {
                   key={cond}
                   type="button"
                   className={`btn ${isChecked ? 'btn-primary' : 'btn-secondary'}`}
-                  style={{ padding: '6px 14px', fontSize: '0.84rem' }}
+                  style={{ padding: '6px 14px', fontSize: '0.84rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                   onClick={() => toggleCondition(cond)}
                 >
-                  {isChecked ? '✓ ' : '+ '}
-                  {cond}
+                  {isChecked ? <Check size={12} /> : <Plus size={12} />}
+                  <span>{cond}</span>
                 </button>
               );
             })}

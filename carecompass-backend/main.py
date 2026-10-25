@@ -76,7 +76,8 @@ class SymptomRequest(BaseModel):
 # LANGUAGE AND LOCALIZATION UTILITIES
 # --------------------------------------------------
 
-MAX_FOLLOW_UP_QUESTIONS = 4
+MAX_FOLLOW_UP_QUESTIONS = 10
+PREFERRED_FOLLOW_UP_QUESTIONS = 4
 
 DEFAULT_OTHER_OPTIONS = {
     "hi": "अन्य विवरण",
@@ -726,6 +727,212 @@ def emergency_response(reason: str, lang: str = "en") -> dict:
 
 
 # --------------------------------------------------
+# DIRECT ASSISTANCE / NURSE CARE ROUTING
+# --------------------------------------------------
+
+ASSISTANCE_PATTERNS = [
+    r"\bneed\s+assistance\b",
+    r"\bneed\s+(a\s+)?nurse\b",
+    r"\bbook\s+(a\s+)?nurse\b",
+    r"\bwant\s+(a\s+)?nurse\b",
+    r"\bsend\s+(a\s+)?nurse\b",
+    r"\bhome\s+nurse\b",
+    r"\bcaregiver\b",
+    r"\bassistance\s+needed\b",
+    r"\bbedridden\b",
+    r"\bblood\s+test\s+(chahiye|needed|karna|karwana)\b",
+    r"\bneed\s+(a\s+)?blood\s+test\b",
+    r"\bsample\s+collection\b",
+    r"nurse\s+chahiye",
+    r"nurse\s+bhej\s+(do|dijiye)",
+    r"madad\s+chahiye",
+    r"sahayata\s+chahiye",
+    r"ghar\s+par\s+nurse",
+    r"ghar\s+par\s+dekhbhal",
+    r"elderly\s+care",
+]
+
+
+def detect_direct_assistance_request(text: str) -> bool:
+    normalized = re.sub(r"\s+", " ", text.lower()).strip()
+    return any(re.search(pat, normalized) for pat in ASSISTANCE_PATTERNS)
+
+
+def assistance_response(lang: str = "en") -> dict:
+    if lang == "hi":
+        return {
+            "status": "recommendation",
+            "follow_up_question": None,
+            "options": [],
+            "other_option_placeholder": None,
+            "care_type": "nurse_home_visit",
+            "urgency": "same_day",
+            "red_flags": [],
+            "reasoning": (
+                "मरीज़ की देखभाल, व्यक्तिगत सहायता और वाइटल्स जाँच के लिए घर पर पर्सनल केयर नर्स विजिट सबसे उपयुक्त और सुरक्षित विकल्प है। "
+                "नर्स घर आकर वाइटल्स (बीपी, ऑक्सीजन, तापमान) की जाँच करेंगी और आवश्यक देखभाल प्रदान करेंगी।"
+            ),
+            "next_steps": [
+                "कदम 1: नीचे दिए गए विकल्पों में से अपने क्षेत्र की प्रमाणित पर्सनल केयर नर्स बुक करें।",
+                "कदम 2: डॉक्टर समीक्षा के लिए आवश्यक बेसिक ब्लड टेस्ट (सीबीसी, शुगर) बुक करें।",
+                "कदम 3: मरीज़ को शांत व आरामदायक स्थिति में रखें और उनकी दवाइयां तैयार रखें।",
+                "कदम 4: नर्स के आने पर वाइटल्स रिकॉर्ड करवाएं और आवश्यकतानुसार डॉक्टर से सलाह लें।"
+            ],
+            "home_care": [
+                "मरीज़ को आरामदायक स्थिति में लिटाएं या सहारा देकर बिठाएं।",
+                "कमरे में ताज़ी हवा और शांति का वातावरण बनाए रखें।",
+                "पर्याप्त मात्रा में गुनगुना पानी, ओआरएस या हल्का भोजन उपलब्ध कराएं।"
+            ],
+            "warning_signs": [
+                "अचानक साँस लेने में भारी तकलीफ़ या छाती में दर्द",
+                "मरीज़ का अनुत्तरदायी या बेहोश होना",
+                "किसी भी गंभीर आपातकाल में तुरंत 112 पर कॉल करें"
+            ],
+            "recommended_tests": [
+                {
+                    "test_name": "Complete Blood Count (CBC)",
+                    "why_needed": "इन्फेक्शन और वाइटल काउंट्स की जांच हेतु",
+                    "sample_type": "Blood Test (Home Collection)",
+                    "price": 299
+                },
+                {
+                    "test_name": "Random Blood Glucose (RBS)",
+                    "why_needed": "कमजोरी या चक्कर के कारण शुगर लेवल की तत्काल जांच",
+                    "sample_type": "Blood Test",
+                    "price": 149
+                }
+            ],
+            "nurse_care_option": {
+                "recommend": True,
+                "title": "घर पर पर्सनल केयर नर्स विजिट बुक करें",
+                "badge": "Bedside Vitals & Assistance",
+                "why_beneficial": "क्लीनिक के चक्कर लगाने के बजाय प्रशिक्षित नर्स घर आकर मरीज़ के वाइटल्स चेक करेंगी और देखभाल में सहायता देंगी।",
+                "services": [
+                    "ब्लड प्रेशर, पल्स ऑक्सीमीटर और तापमान की जांच",
+                    "दवा देने और आरामदायक स्थिति बनाने में सहायता",
+                    "डॉक्टर टेलीकंसल्ट के लिए वाइटल्स रिपोर्ट तैयार करना"
+                ],
+                "price": 499
+            },
+            "caregivers": []
+        }
+    elif lang == "hinglish":
+        return {
+            "status": "recommendation",
+            "follow_up_question": None,
+            "options": [],
+            "other_option_placeholder": None,
+            "care_type": "nurse_home_visit",
+            "urgency": "same_day",
+            "red_flags": [],
+            "reasoning": (
+                "Patient ki physical assistance aur monitoring ke liye ghar par certified Personal Care Nurse book karna sabse safe aur reliable option hai. "
+                "Nurse ghar aakar vitals (BP, SpO2, temp) check karengi aur bedside supportive care dengi."
+            ),
+            "next_steps": [
+                "Step 1: Niche listed verified personal care nurse ko home visit ke liye book karein.",
+                "Step 2: Doctor review ke liye basic diagnostic lab tests (CBC, Blood Sugar) schedule karein.",
+                "Step 3: Patient ko comfortable resting posture mein rakhein aur hydrated rakhein.",
+                "Step 4: Nurse visit ke baad bedside report ke sath teleconsult doctor se connect karein."
+            ],
+            "home_care": [
+                "Patient ko comfortable position mein aaram karwayein.",
+                "Room ko ventilated aur peaceful rakhein.",
+                "Adequate water, ORS aur light meals provide karein."
+            ],
+            "warning_signs": [
+                "Achanak saans phoolna ya chest pain",
+                "Loss of consciousness ya extreme lethargy",
+                "Kisi bhi gambhir aapatkaal mein turant 112 par call karein"
+            ],
+            "recommended_tests": [
+                {
+                    "test_name": "Complete Blood Count (CBC)",
+                    "why_needed": "Infection aur health profile evaluate karne ke liye",
+                    "sample_type": "Blood Test (Home Collection)",
+                    "price": 299
+                },
+                {
+                    "test_name": "Random Blood Glucose (RBS)",
+                    "why_needed": "Weakness ke case mein blood sugar level check karne ke liye",
+                    "sample_type": "Blood Test",
+                    "price": 149
+                }
+            ],
+            "nurse_care_option": {
+                "recommend": True,
+                "title": "Ghar par Personal Care Nurse visit book karein",
+                "badge": "In-Person Bedside Assistance",
+                "why_beneficial": "Clinic ke chakkar katne ke bajaye registered nurse ghar par bedside vitals monitor karengi aur assistance dengi.",
+                "services": [
+                    "Comprehensive vitals check (BP, SpO2, Pulse, Temp)",
+                    "Bedside recovery aur medicine management support",
+                    "Doctor teleconsult review ke liye vitals chart"
+                ],
+                "price": 499
+            },
+            "caregivers": []
+        }
+    else:
+        return {
+            "status": "recommendation",
+            "follow_up_question": None,
+            "options": [],
+            "other_option_placeholder": None,
+            "care_type": "nurse_home_visit",
+            "urgency": "same_day",
+            "red_flags": [],
+            "reasoning": (
+                "For dedicated patient assistance and physical comfort, booking a Personal Care Nurse at home is the most appropriate option. "
+                "A certified nurse will record bedside clinical vitals (BP, SpO2 pulse oximetry, temperature) and provide hands-on supportive care."
+            ),
+            "next_steps": [
+                "Step 1: Book a certified personal care nurse for a home visit from the nearby responders below.",
+                "Step 2: Schedule home sample collection for baseline diagnostic tests (CBC, Blood Sugar).",
+                "Step 3: Ensure the patient is resting comfortably and well-hydrated.",
+                "Step 4: Use the bedside vitals recorded by the nurse for physician teleconsultation."
+            ],
+            "home_care": [
+                "Keep the patient in a comfortable, supported resting position.",
+                "Maintain a calm, well-ventilated recovery environment.",
+                "Offer warm fluids, water, or ORS in small sips."
+            ],
+            "warning_signs": [
+                "Sudden severe shortness of breath or chest pain",
+                "Confusion, severe dizziness, or loss of responsiveness",
+                "Call 112 immediately for any acute medical emergency"
+            ],
+            "recommended_tests": [
+                {
+                    "test_name": "Complete Blood Count (CBC)",
+                    "why_needed": "Evaluates overall health and immune cell counts",
+                    "sample_type": "Blood Test (Home collection available)",
+                    "price": 299
+                },
+                {
+                    "test_name": "Random Blood Glucose (RBS)",
+                    "why_needed": "Screening for blood sugar dips causing fatigue or weakness",
+                    "sample_type": "Blood Test",
+                    "price": 149
+                }
+            ],
+            "nurse_care_option": {
+                "recommend": True,
+                "title": "Book an In-Person Personal Care Nurse at Home",
+                "badge": "In-Person Clinical Assessment",
+                "why_beneficial": "Avoid traveling to clinic waiting rooms. A qualified nurse provides bedside vitals evaluation and direct care assistance.",
+                "services": [
+                    "Comprehensive vitals check (SpO2 oxygen, BP, pulse, temperature)",
+                    "Bedside patient positioning and comfort management",
+                    "Objective vitals report for teleconsult physician review"
+                ],
+                "price": 499
+            },
+            "caregivers": []
+        }
+
+
+# --------------------------------------------------
 # API ROUTES
 # --------------------------------------------------
 
@@ -846,42 +1053,41 @@ def assess_symptoms(request: SymptomRequest):
         print("Safety screen triggered: Emergency referral dispatched.")
         return result
 
-    # 3. Check Groq API
+    # 3. Direct Assistance / Nurse Request Screen
+    if detect_direct_assistance_request(patient_text):
+        result = assistance_response(lang=lang)
+        result["caregivers"] = match_caregivers(
+            care_type="nurse_home_visit",
+            language=lang,
+        )
+        save_assessment(result)
+        print("Direct assistance request triggered: Nurse home visit dispatched immediately.")
+        return result
+
+    # 4. Check Groq API
     if not GROQ_API_KEY:
         raise HTTPException(
             status_code=500,
             detail="GROQ_API_KEY is missing. Add it to your .env file and restart.",
         )
 
-    # 4. Construct AI Prompt with Mandatory 4-Question Invariant & Trilingual Rules
+    # 5. Construct AI Prompt with Adaptive Clearance & Language Rules
     language_directive = LANGUAGE_DIRECTIVES.get(lang, LANGUAGE_DIRECTIVES["en"])
 
     workflow_instructions = f"""
 {language_directive}
 
-STRICT PROGRESS AND QUESTION INVARIANT RULES:
-1. MAX_FOLLOW_UP_QUESTIONS = {MAX_FOLLOW_UP_QUESTIONS}.
-2. You have currently asked {follow_up_count} questions.
-3. FOLLOW-UP COUNT STATUS:
-"""
-
-    if follow_up_count < MAX_FOLLOW_UP_QUESTIONS:
-        workflow_instructions += f"""
-   - This is Turn #{current_question_number} (Question {current_question_number} of {MAX_FOLLOW_UP_QUESTIONS}).
-   - MANDATE: You MUST return status "follow_up_needed".
-   - You MUST NOT return status "recommendation" yet.
-   - You MUST provide `follow_up_question` asking ONE single, atomic question building directly upon the patient's latest answer.
-   - Exactly ONE question mark (?) allowed.
-   - Provide 3-5 distinct choices in `options` formatted in the requested language ({lang}), plus the other option.
-   - `care_type`, `urgency`, `next_steps`, `home_care`, `warning_signs` must be null or empty.
-"""
-    else:
-        workflow_instructions += f"""
-   - All {MAX_FOLLOW_UP_QUESTIONS} questions have been completed!
-   - MANDATE: You MUST NOT ask any more questions. Set `follow_up_question` to null and `options` to [].
-   - MANDATE: You MUST return status "recommendation" (or "uncertain").
-   - Provide complete, compassionate, practical home care guidance, precautions, and care pathway strictly in the requested language ({lang}).
-   - Populate `reasoning`, `next_steps`, `home_care`, and `warning_signs`.
+DYNAMIC ADAPTIVE FOLLOW-UP RULES (MAX {MAX_FOLLOW_UP_QUESTIONS}, PREFER ~{PREFERRED_FOLLOW_UP_QUESTIONS}):
+1. PROGRESS: Turn #{current_question_number} (Completed so far: {follow_up_count} questions).
+2. EARLY CLINICAL CLEARANCE MANDATE:
+   - If you now have sufficient clarity of what to do (e.g. mild condition confirmed safe, emergency escalation, or nurse assistance need), YOU MUST RETURN `status: "recommendation"` IMMEDIATELY, even if this is only question 1, 2, or 3! Set `follow_up_question: null` and `options: []`.
+   - Provide complete actionable guidance (`reasoning`, `next_steps`, `home_care`, `warning_signs`, `recommended_tests`, `nurse_care_option`).
+3. ASKING A FOLLOW-UP QUESTION:
+   - ONLY return `status: "follow_up_needed"` if there is genuine ambiguity, an unruled red flag, or vital missing detail.
+   - Keep question strictly atomic (EXACTLY ONE question mark ?).
+   - Aim for around ~{PREFERRED_FOLLOW_UP_QUESTIONS} questions when clarification is genuinely needed.
+4. HARD CEILING AT {MAX_FOLLOW_UP_QUESTIONS} QUESTIONS:
+   - If {MAX_FOLLOW_UP_QUESTIONS} questions have been reached, you MUST NOT ask any more questions. Set `status: "recommendation"`.
 """
 
     messages = [
@@ -966,29 +1172,24 @@ STRICT PROGRESS AND QUESTION INVARIANT RULES:
         save_assessment(result)
         return result
 
-    # 7. ENFORCE THE STRICT 4-QUESTION INVARIANT
-    if follow_up_count < MAX_FOLLOW_UP_QUESTIONS:
-        # STRICT RULE: Must be follow_up_needed, no recommendation allowed yet!
-        result["status"] = "follow_up_needed"
-        result["care_type"] = None
-        result["urgency"] = None
-        result["next_steps"] = []
-        result["home_care"] = []
-        result["warning_signs"] = []
+    # 7. PROCESS AI DECISION & EARLY CLINICAL CLEARANCE
+    ai_status = (result.get("status") or "").strip().lower()
+    q_text = (result.get("follow_up_question") or "").strip()
+    has_valid_question = bool(q_text and "?" in q_text and len(q_text) >= 8)
 
-        q_text = (result.get("follow_up_question") or "").strip()
-        # Ensure question exists and is genuinely a question (contains '?')
-        if not q_text or "?" not in q_text or len(q_text) < 10:
-            synth_q, synth_opts = get_fallback_question(patient_text, follow_up_count, lang)
-            result["follow_up_question"] = synth_q
-            result["options"] = synth_opts
-        else:
-            result["options"] = normalize_follow_up_options(result.get("options"), lang=lang)
+    # Determine whether clinical clearance has occurred:
+    # 1. AI decided to deliver recommendation (early clearance at Q1, Q2, etc.)
+    # 2. Hard ceiling reached (MAX_FOLLOW_UP_QUESTIONS completed)
+    # 3. AI provided care pathway without asking a question
+    # 4. Fallback engaged after preferred question count reached
+    is_recommendation = (
+        ai_status == "recommendation"
+        or follow_up_count >= MAX_FOLLOW_UP_QUESTIONS
+        or (not has_valid_question and follow_up_count >= PREFERRED_FOLLOW_UP_QUESTIONS)
+        or (result.get("care_type") and not has_valid_question)
+    )
 
-        result["other_option_placeholder"] = DEFAULT_OTHER_PLACEHOLDERS.get(lang, DEFAULT_OTHER_PLACEHOLDERS["en"])
-
-    else:
-        # All 4 questions completed! Must be recommendation!
+    if is_recommendation:
         result["status"] = "recommendation"
         result["follow_up_question"] = None
         result["options"] = []
@@ -1019,6 +1220,24 @@ STRICT PROGRESS AND QUESTION INVARIANT RULES:
 
         if not result.get("nurse_care_option"):
             result["nurse_care_option"] = fallback_rec["nurse_care_option"]
+
+    else:
+        # Still clarifying: follow-up question needed
+        result["status"] = "follow_up_needed"
+        result["care_type"] = None
+        result["urgency"] = None
+        result["next_steps"] = []
+        result["home_care"] = []
+        result["warning_signs"] = []
+
+        if not has_valid_question:
+            synth_q, synth_opts = get_fallback_question(patient_text, follow_up_count, lang)
+            result["follow_up_question"] = synth_q
+            result["options"] = synth_opts
+        else:
+            result["options"] = normalize_follow_up_options(result.get("options"), lang=lang)
+
+        result["other_option_placeholder"] = DEFAULT_OTHER_PLACEHOLDERS.get(lang, DEFAULT_OTHER_PLACEHOLDERS["en"])
 
     # 8. Caregiver Matching (Only for final recommendations)
     result["caregivers"] = []

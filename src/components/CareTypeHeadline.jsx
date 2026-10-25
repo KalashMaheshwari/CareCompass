@@ -12,21 +12,21 @@ export const CareTypeHeadline = ({ careType = 'routine_monitoring', size = 'norm
     switch (effectiveCareType) {
       case 'routine_monitoring':
       case 'self_care':
-        return <CheckCircle2 size={size === 'lg' ? 32 : 24} color="#10b981" />;
+        return <CheckCircle2 size={size === 'lg' ? 32 : 24} color="#3f64ae" />;
       case 'paramedic_home_visit':
-        return <Home size={size === 'lg' ? 32 : 24} color="#0d9488" />;
+        return <Home size={size === 'lg' ? 32 : 24} color="#2b4984" />;
       case 'nurse':
       case 'nurse_home_visit':
-        return <UserCheck size={size === 'lg' ? 32 : 24} color="#0284c7" />;
+        return <UserCheck size={size === 'lg' ? 32 : 24} color="#3f64ae" />;
       case 'gp_teleconsult':
-        return <Video size={size === 'lg' ? 32 : 24} color="#6366f1" />;
+        return <Video size={size === 'lg' ? 32 : 24} color="#223c6e" />;
       case 'specialist':
       case 'specialist_consult':
-        return <Stethoscope size={size === 'lg' ? 32 : 24} color="#8b5cf6" />;
+        return <Stethoscope size={size === 'lg' ? 32 : 24} color="#3f64ae" />;
       case 'emergency_referral':
-        return <AlertOctagon size={size === 'lg' ? 32 : 24} color="#ef4444" />;
+        return <AlertOctagon size={size === 'lg' ? 32 : 24} color="#dc2626" />;
       default:
-        return <CheckCircle2 size={size === 'lg' ? 32 : 24} color="#10b981" />;
+        return <CheckCircle2 size={size === 'lg' ? 32 : 24} color="#3f64ae" />;
     }
   };
 
@@ -43,8 +43,8 @@ export const CareTypeHeadline = ({ careType = 'routine_monitoring', size = 'norm
           width: size === 'lg' ? '56px' : '44px',
           height: size === 'lg' ? '56px' : '44px',
           borderRadius: '50%',
-          backgroundColor: '#f0fdfa',
-          border: '1.5px solid #ccfbf1',
+          backgroundColor: '#edf4fe',
+          border: '1.5px solid #c8d9f0',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -54,7 +54,7 @@ export const CareTypeHeadline = ({ careType = 'routine_monitoring', size = 'norm
         {getIcon()}
       </div>
       <div>
-        <h2 style={{ fontSize: size === 'lg' ? '1.35rem' : '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>
+        <h2 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: size === 'lg' ? '1.45rem' : '1.15rem', fontWeight: 600, color: '#101e33', margin: 0 }}>
           {label}
         </h2>
       </div>

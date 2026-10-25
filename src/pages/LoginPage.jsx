@@ -46,10 +46,10 @@ export const LoginPage = () => {
   return (
     <div style={{ maxWidth: '520px', margin: '40px auto', width: '100%' }}>
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-        <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto' }}>
+        <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#e0f2fe', color: '#3f64ae', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto' }}>
           <Lock size={22} />
         </div>
-        <h2 style={{ fontSize: '1.75rem', marginBottom: '6px' }}>Account & Patient Access</h2>
+        <h2 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: '2rem', fontWeight: 600, color: '#101e33', marginBottom: '6px' }}>Account & Patient Access</h2>
         <p style={{ fontSize: '0.92rem', color: 'var(--text-muted)' }}>
           Secure authentication managed via Supabase Auth. Access saved family medical records and dispatch history.
         </p>
@@ -67,7 +67,7 @@ export const LoginPage = () => {
             style={{ fontSize: '0.86rem', padding: '10px 12px' }}
             onClick={() => handleQuickDemoUser('rohit')}
           >
-            <User size={15} color="#0284c7" />
+            <User size={15} color="#3f64ae" />
             <span>Rohit (Hinglish)</span>
           </button>
           <button
@@ -76,7 +76,7 @@ export const LoginPage = () => {
             style={{ fontSize: '0.86rem', padding: '10px 12px' }}
             onClick={() => handleQuickDemoUser('sunita')}
           >
-            <User size={15} color="#0d9488" />
+            <User size={15} color="#2b4984" />
             <span>Sunita (Hindi)</span>
           </button>
         </div>
@@ -117,7 +117,7 @@ export const LoginPage = () => {
             <div className="form-group">
               <div className="flex-between">
                 <label className="form-label">Enter Verification Code</label>
-                <span style={{ fontSize: '0.8rem', color: '#059669', fontWeight: 600 }}>Test OTP: 1234</span>
+                <span style={{ fontSize: '0.8rem', color: '#3f64ae', fontWeight: 600 }}>Test OTP: 1234</span>
               </div>
               <input
                 id="login-otp-input"

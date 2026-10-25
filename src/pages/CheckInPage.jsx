@@ -71,7 +71,7 @@ export const CheckInPage = ({ bookingId = null }) => {
       </div>
 
       <div style={{ marginBottom: '20px' }}>
-        <h2 style={{ fontSize: '1.6rem', marginBottom: '4px' }}>
+        <h2 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: '1.8rem', fontWeight: 600, color: '#101e33', marginBottom: '6px' }}>
           {t('checkin_title')}
         </h2>
         <p style={{ fontSize: '0.92rem', color: 'var(--text-muted)' }}>
@@ -87,7 +87,7 @@ export const CheckInPage = ({ bookingId = null }) => {
             height: '54px',
             borderRadius: '50%',
             backgroundColor: '#e0f2fe',
-            color: '#0284c7',
+            color: '#3f64ae',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -97,7 +97,7 @@ export const CheckInPage = ({ bookingId = null }) => {
           <Activity size={28} />
         </div>
 
-        <h3 style={{ fontSize: '1.45rem', lineHeight: 1.4, marginBottom: '24px', color: 'var(--text-primary)' }}>
+        <h3 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: '1.45rem', fontWeight: 600, lineHeight: 1.4, marginBottom: '24px', color: '#101e33' }}>
           {checkinQuestion}
         </h3>
 
@@ -113,14 +113,14 @@ export const CheckInPage = ({ bookingId = null }) => {
               fontWeight: 700,
               flexDirection: 'column',
               gap: '4px',
-              backgroundColor: selectedResponse === 'better' ? '#ecfdf5' : '#ffffff',
-              borderColor: selectedResponse === 'better' ? '#10b981' : 'var(--border-light)',
-              color: '#065f46'
+              backgroundColor: selectedResponse === 'better' ? '#edf4fe' : '#ffffff',
+              borderColor: selectedResponse === 'better' ? '#3f64ae' : 'var(--border-light)',
+              color: '#1b3560'
             }}
             onClick={() => handleAnswerCheckIn('better')}
           >
             <span>{t('better')}</span>
-            <span style={{ fontSize: '0.74rem', fontWeight: 500, color: '#059669' }}>Symptoms Improving</span>
+            <span style={{ fontSize: '0.74rem', fontWeight: 600, color: '#3f64ae' }}>Symptoms Improving</span>
           </button>
 
           {/* Same */}
@@ -160,7 +160,10 @@ export const CheckInPage = ({ bookingId = null }) => {
             }}
             onClick={() => handleAnswerCheckIn('worse')}
           >
-            <span>⚠️ {t('worse')}</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <AlertTriangle size={18} />
+              <span>{t('worse')}</span>
+            </span>
             <span style={{ fontSize: '0.74rem', fontWeight: 600, color: '#b91c1c' }}>Escalate Clinical Protocol</span>
           </button>
 
@@ -168,33 +171,38 @@ export const CheckInPage = ({ bookingId = null }) => {
           <button
             id="checkin-breathing-btn"
             type="button"
-            className="btn btn-secondary"
+            className="btn btn-danger"
             style={{
               minHeight: '74px',
               fontSize: '1rem',
               fontWeight: 700,
               flexDirection: 'column',
               gap: '4px',
-              backgroundColor: '#fef2f2',
-              borderColor: '#ef4444',
-              color: '#b91c1c'
+              backgroundColor: '#dc2626',
+              borderColor: '#dc2626',
+              color: '#ffffff'
             }}
             onClick={() => handleAnswerCheckIn('breathing_trouble')}
           >
-            <span>🚨 {t('breathing_trouble')}</span>
-            <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#dc2626' }}>Immediate 112 Dispatch</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <ShieldAlert size={18} color="#ffffff" />
+              <span>{t('breathing_trouble')}</span>
+            </span>
+            <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#fee2e2' }}>Immediate 112 Dispatch</span>
           </button>
         </div>
 
         {selectedResponse === 'better' && (
-          <div style={{ marginTop: '20px', padding: '14px', background: '#ecfdf5', borderRadius: 'var(--radius-sm)', color: '#065f46', fontSize: '0.9rem' }}>
-            ✓ Patient improvement recorded in audit log. Caregiver will arrive for verification of vitals.
+          <div style={{ marginTop: '20px', padding: '14px', background: '#edf4fe', borderRadius: 'var(--radius-sm)', border: '1px solid #c8d9f0', color: '#1b3560', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CheckCircle2 size={16} color="#3f64ae" />
+            <span>Patient improvement recorded in audit log. Caregiver will arrive for verification of vitals.</span>
           </div>
         )}
 
         {selectedResponse === 'same' && (
-          <div style={{ marginTop: '20px', padding: '14px', background: '#f8fafc', borderRadius: 'var(--radius-sm)', color: '#334155', fontSize: '0.9rem' }}>
-            ✓ Symptoms logged as stable. Caregiver arrival remains on schedule.
+          <div style={{ marginTop: '20px', padding: '14px', background: '#f8fafc', borderRadius: 'var(--radius-sm)', color: '#334155', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CheckCircle2 size={16} color="#3f64ae" />
+            <span>Symptoms logged as stable. Caregiver arrival remains on schedule.</span>
           </div>
         )}
       </div>

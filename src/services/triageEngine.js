@@ -38,6 +38,12 @@ const RED_FLAG_PATTERNS = [
     negationRegex: null,
     label: 'Mental Health Crisis',
     isMentalHealth: true
+  },
+  {
+    flag: 'acute_immunocompromised_crisis',
+    regex: /\b(aids|hiv\s+crisis|acute\s+hiv)\b/i,
+    negationRegex: /(no\s+aids|aids\s+nahi|hiv\s+negative)/i,
+    label: 'Critical Immunocompromised Condition'
   }
 ];
 
@@ -317,7 +323,66 @@ export const runTriage = async ({
     };
   }
 
-  // 3. Follow-up Question Stage (Strictly 4 questions before recommendation)
+  // 2b. Direct Assistance Request (Nurse Home Visit & Tests Early Exit)
+  const ASSISTANCE_PATTERNS = /(need\s+assistance|need\s+(a\s+)?nurse|book\s+(a\s+)?nurse|want\s+(a\s+)?nurse|home\s+nurse|nurse\s+chahiye|nurse\s+bhej|madad\s+chahiye|sahayata\s+chahiye|bedridden|elderly\s+care|home\s+care\s+needed|blood\s+test\s+(chahiye|needed|karna|karwana))/i;
+  const hasAssistanceRequest = ASSISTANCE_PATTERNS.test(lowerText) ||
+    history.some(h => ASSISTANCE_PATTERNS.test(String(h.answer || h.user_input || '')));
+
+  if (hasAssistanceRequest) {
+    return {
+      status: 'recommendation',
+      follow_up_question: null,
+      follow_up_options: null,
+      options: [],
+      other_option_placeholder: null,
+      care_type: 'nurse',
+      raw_care_type: 'nurse_home_visit',
+      urgency: 'same_day',
+      red_flags: [],
+      reasoning: detectedLanguage === 'hi'
+        ? 'मरीज़ की देखभाल और व्यक्तिगत सहायता के लिए घर पर पर्सनल केयर नर्स विजिट सबसे उपयुक्त और सुरक्षित विकल्प है। नर्स वाइटल्स (बीपी, ऑक्सीजन, तापमान) की जाँच करेंगी।'
+        : (detectedLanguage === 'hinglish'
+            ? 'Patient ki bedside physical assistance aur monitoring ke liye ghar par personal care nurse visit sabse safe option hai. Nurse vitals check karengi.'
+            : 'For dedicated bedside physical assistance and vitals monitoring, booking a personal care nurse at home is the most appropriate option.'),
+      next_steps: [
+        detectedLanguage === 'hi' ? 'कदम 1: नीचे दिए गए विकल्पों में से पर्सनल केयर नर्स बुक करें।' : 'Step 1: Book an in-person personal care nurse for a home visit.',
+        detectedLanguage === 'hi' ? 'कदम 2: बेसिक डायग्नोस्टिक टेस्ट (सीबीसी, ब्लड शुगर) बुक करें।' : 'Step 2: Schedule baseline diagnostic lab tests.',
+        detectedLanguage === 'hi' ? 'कदम 3: मरीज़ को शांत व आरामदायक स्थिति में रखें।' : 'Step 3: Keep the patient resting comfortably in a quiet room.'
+      ],
+      home_care: [
+        detectedLanguage === 'hi' ? 'मरीज़ को पर्याप्त मात्रा में पानी, ओआरएस और हल्का भोजन दें।' : 'Provide adequate hydration (water, ORS) and comfortable positioning.'
+      ],
+      warning_signs: [
+        'Achanak saans lene mein tez takleef ya chest pain',
+        'Kisi bhi gambhir aapatkaal mein turant 112 par call karein'
+      ],
+      recommended_tests: [
+        {
+          test_name: 'Complete Blood Count (CBC)',
+          why_needed: 'Routine infection and health profile',
+          sample_type: 'Blood Test (Home Collection)',
+          price: 299
+        },
+        {
+          test_name: 'Random Blood Glucose (RBS)',
+          why_needed: 'Immediate blood sugar screening',
+          sample_type: 'Blood Test',
+          price: 149
+        }
+      ],
+      nurse_care_option: {
+        recommend: true,
+        title: detectedLanguage === 'hi' ? 'घर पर पर्सनल केयर नर्स विजिट बुक करें' : 'Book a Personal Care Nurse at Home',
+        badge: 'Bedside Vitals & Assistance',
+        why_beneficial: 'Registered nurse checks bedside vitals and provides clinical support.',
+        services: ['BP, SpO2, and temperature tracking', 'Bedside recovery support'],
+        price: 499
+      },
+      matched_caregivers: SEED_CAREGIVERS.filter(c => c.care_types.includes('nurse') || c.care_types.includes('nurse_home_visit')).slice(0, 3)
+    };
+  }
+
+  // 3. Follow-up Question Stage (Adaptive questioning with early exit)
   if (history.length < 4) {
     const turn = history.length; // 0, 1, 2, 3
     let qText = '';

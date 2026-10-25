@@ -36,7 +36,7 @@ export const HandoffPreview = ({ patient, symptoms, urgency, careType }) => {
       </div>
 
       <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--border-light)', fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <ShieldAlert size={14} color="#0284c7" />
+        <ShieldAlert size={14} color="#3f64ae" />
         <span>{t('handoff_preview_note')}</span>
       </div>
     </div>

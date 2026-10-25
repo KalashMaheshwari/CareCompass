@@ -2,6 +2,7 @@ import React from 'react';
 import { useApp } from './context/AppContext';
 import { DemoBanner } from './components/DemoBanner';
 import { GlobalHeader } from './components/GlobalHeader';
+import { GlobalFooter } from './components/GlobalFooter';
 import { BottomNav } from './components/BottomNav';
 import { WifiOff } from 'lucide-react';
 
@@ -135,7 +136,10 @@ export function App() {
         {renderCurrentPage()}
       </main>
 
-      {/* 5. Bottom Navigation */}
+      {/* 5. Global Floating Footer */}
+      {!isEmergency && <GlobalFooter />}
+
+      {/* 6. Bottom Navigation */}
       {!isEmergency && <BottomNav />}
     </div>
   );

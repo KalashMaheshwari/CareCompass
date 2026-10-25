@@ -29,11 +29,11 @@ export const PrivacyPage = () => {
   return (
     <div style={{ maxWidth: '840px', margin: '0 auto', width: '100%' }}>
       <div style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#e0f2fe', color: '#0369a1', padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: '0.8rem', fontWeight: 700, marginBottom: '8px' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#e0f2fe', color: '#325292', padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: '0.8rem', fontWeight: 700, marginBottom: '8px' }}>
           <Lock size={14} />
           <span>Digital Personal Data Protection (DPDP) Act 2023 Compliance</span>
         </div>
-        <h2 style={{ fontSize: '1.75rem', margin: 0 }}>Privacy & Patient Data Governance</h2>
+        <h2 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: '2rem', fontWeight: 600, color: '#101e33', margin: 0 }}>Privacy & Patient Data Governance</h2>
         <p style={{ fontSize: '0.92rem', color: 'var(--text-muted)', marginTop: '4px' }}>
           Your rights regarding medical information storage, caregiver coordination data, and permanent erasure.
         </p>
@@ -45,8 +45,9 @@ export const PrivacyPage = () => {
           <div className="flex-between" style={{ marginBottom: '10px' }}>
             <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>Patient Data Processing Consent:</strong>
             {hasConsented ? (
-              <span className="clinical-badge" style={{ background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0' }}>
-                ✓ Consent Active
+              <span className="clinical-badge" style={{ background: '#edf4fe', color: '#1b3560', border: '1px solid #c8d9f0', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                <CheckCircle size={13} color="#3f64ae" />
+                <span>Consent Active</span>
               </span>
             ) : (
               <span className="clinical-badge" style={{ background: '#fffbeb', color: '#92400e', border: '1px solid #fde68a' }}>
@@ -81,7 +82,7 @@ export const PrivacyPage = () => {
 
         {/* Stored Records Inspector */}
         <div className="surface-card">
-          <h3 style={{ fontSize: '1.15rem', marginBottom: '8px', color: 'var(--text-primary)' }}>
+          <h3 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: '1.3rem', fontWeight: 600, marginBottom: '8px', color: '#101e33' }}>
             Active Stored Records Under This Account
           </h3>
           <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
@@ -104,7 +105,7 @@ export const PrivacyPage = () => {
         <div className="surface-card" style={{ borderColor: '#fca5a5', background: '#fff5f5' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#991b1b', marginBottom: '8px' }}>
             <Trash2 size={20} />
-            <h4 style={{ fontSize: '1.1rem', margin: 0 }}>Right to Erasure (DPDP Act 2023)</h4>
+            <h4 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: '1.15rem', fontWeight: 600, margin: 0 }}>Right to Erasure (DPDP Act 2023)</h4>
           </div>
           <p style={{ fontSize: '0.88rem', color: '#b91c1c', marginBottom: '16px', lineHeight: 1.5 }}>
             Permanently delete all stored profiles, booking records, conversation histories, and audit references from the local client. This action is irreversible.

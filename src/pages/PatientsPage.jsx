@@ -32,7 +32,7 @@ export const PatientsPage = () => {
     <div style={{ width: '100%' }}>
       <div className="flex-between" style={{ marginBottom: '24px' }}>
         <div>
-          <h2 style={{ fontSize: '1.75rem', marginBottom: '4px' }}>Family Health Profiles</h2>
+          <h2 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: '2rem', fontWeight: 600, color: '#101e33', marginBottom: '4px' }}>Family Health Profiles</h2>
           <p style={{ fontSize: '0.92rem', color: 'var(--text-muted)' }}>
             Stored medical records adhering to the <code>members</code> database schema. Select a person to begin care routing.
           </p>
@@ -59,8 +59,8 @@ export const PatientsPage = () => {
               key={m.id}
               className="surface-card"
               style={{
-                borderColor: isSelected ? 'var(--brand-primary)' : 'var(--border-light)',
-                background: isSelected ? 'linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%)' : '#ffffff',
+                borderColor: isSelected ? '#3f64ae' : 'var(--border-light)',
+                background: isSelected ? '#edf4fe' : '#ffffff',
                 cursor: 'pointer',
                 display: 'flex',
                 flexDirection: 'column',
@@ -79,7 +79,7 @@ export const PatientsPage = () => {
                         height: '48px',
                         borderRadius: '50%',
                         backgroundColor: isSelected ? 'var(--brand-primary)' : '#e0f2fe',
-                        color: isSelected ? '#ffffff' : '#0284c7',
+                        color: isSelected ? '#ffffff' : '#3f64ae',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -90,7 +90,7 @@ export const PatientsPage = () => {
                       {m.full_name ? m.full_name.charAt(0).toUpperCase() : 'P'}
                     </div>
                     <div>
-                      <h3 style={{ fontSize: '1.15rem', margin: 0 }}>{m.full_name}</h3>
+                      <h3 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: '1.18rem', fontWeight: 600, color: '#101e33', margin: 0 }}>{m.full_name}</h3>
                       <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
                         {m.relationship} {age !== null ? `• ${age} yrs` : ''} {m.blood_group ? `• ${m.blood_group}` : ''}
                       </span>
@@ -98,7 +98,7 @@ export const PatientsPage = () => {
                   </div>
 
                   {isSelected && (
-                    <span className="clinical-badge" style={{ background: '#0284c7', color: '#ffffff' }}>
+                    <span className="clinical-badge" style={{ background: '#3f64ae', color: '#ffffff' }}>
                       <Check size={12} />
                       <span>Active</span>
                     </span>

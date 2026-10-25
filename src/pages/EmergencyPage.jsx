@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, PhoneCall, AlertOctagon, HeartHandshake, ShieldAlert, Send, ArrowLeft, Volume2 } from 'lucide-react';
+import { Phone, PhoneCall, AlertOctagon, HeartHandshake, ShieldAlert, Send, ArrowLeft, Volume2, CheckCircle2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { speechService } from '../services/speech';
 
@@ -53,7 +53,7 @@ export const EmergencyPage = () => {
           <span>CRITICAL DISPATCH ESCALATION</span>
         </div>
 
-        <h1 style={{ fontSize: '2.4rem', color: '#991b1b', marginBottom: '8px', letterSpacing: '-0.025em' }}>
+        <h1 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: '2.5rem', fontWeight: 600, color: '#dc2626', marginBottom: '8px', letterSpacing: '-0.025em' }}>
           {t('emergency_screen_title')}
         </h1>
 
@@ -133,8 +133,9 @@ export const EmergencyPage = () => {
               </span>
             </button>
           ) : (
-            <div style={{ background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0', padding: '12px', borderRadius: 'var(--radius-md)', fontSize: '0.9rem', fontWeight: 600 }}>
-              ✓ {t('alert_sent')}
+            <div style={{ background: '#edf4fe', color: '#1b3560', border: '1px solid #c8d9f0', padding: '12px', borderRadius: 'var(--radius-md)', fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <CheckCircle2 size={16} color="#3f64ae" />
+              <span>{t('alert_sent')}</span>
             </div>
           )}
         </div>

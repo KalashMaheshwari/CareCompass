@@ -1,12 +1,87 @@
-import React, { useState } from 'react';
-import { Mic, MicOff, Keyboard, ArrowRight, ShieldCheck, Activity, Stethoscope, Clock, CheckCircle2, ChevronRight, FileText, UserCheck, PhoneCall, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Mic, 
+  MicOff, 
+  ArrowRight, 
+  ShieldCheck, 
+  Activity, 
+  Stethoscope, 
+  Clock, 
+  CheckCircle2, 
+  ChevronRight, 
+  ChevronLeft,
+  PhoneCall, 
+  Sparkles,
+  AlertOctagon,
+  Loader2,
+  HeartPulse,
+  User,
+  Users,
+  Phone,
+  MessageSquare,
+  MapPin,
+  ShieldAlert
+} from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { speechService } from '../services/speech';
+import { runTriage, checkClientSideRedFlags } from '../services/triageEngine';
+import { supabaseService } from '../services/supabase';
+import { GlobalFooter } from '../components/GlobalFooter';
 
 export const LandingPage = () => {
-  const { t, language, setLanguage, navigate, setTriageData, autoSpeak, activePatient } = useApp();
+  const { t, language, navigate, setTriageData, activePatient } = useApp();
   const [typedInput, setTypedInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [clientRedFlag, setClientRedFlag] = useState(null);
+  const inputRef = useRef(null);
+
+  // Pure language-specific texts for intake box, exclusively controlled by language switcher
+  const getIntakeTexts = (lang, recording) => {
+    if (lang === 'hi') {
+      return {
+        cardTitle: 'मरीज़ देखभाल एवं लक्षण मूल्यांकन',
+        micMain: recording ? 'सुन रहे हैं... बोलिए' : 'बोलने के लिए दबाएँ',
+        micSub: recording ? 'बोलना समाप्त करने के लिए दबाएँ' : 'वॉयस स्पीच प्रोसेसिंग',
+        divider: 'या लिखकर बताएँ',
+        placeholder: 'मरीज़ के लक्षणों के बारे में विस्तार से लिखें (जैसे तेज़ बुखार, गले में खराश, या साँस लेने में तकलीफ़)...',
+        trust: 'अस्पताल-स्तरीय गोपनीयता · DPDP अधिनियम 2023',
+        submit: 'क्लिनिकल मूल्यांकन शुरू करें',
+        evaluating: 'क्लिनिकल मूल्यांकन जारी है...'
+      };
+    }
+    if (lang === 'hinglish') {
+      return {
+        cardTitle: 'Patient Care & Symptom Assessment',
+        micMain: recording ? 'Sun rahe hain... boliye' : 'Bolne ke liye dabayein',
+        micSub: recording ? 'Bolna khatam karne ke liye dabayein' : 'Voice Speech Recognition',
+        divider: 'ya likh kar batayein',
+        placeholder: 'Patient ke symptoms detail mein likhein (e.g. Papa ko kal raat se tez bukhar hai aur gale mein kharash hai)...',
+        trust: 'Hospital-Grade Privacy · DPDP Act 2023',
+        submit: 'Clinical Evaluation Shuru Karein',
+        evaluating: 'Clinical evaluation chal raha hai...'
+      };
+    }
+    // Default to English
+    return {
+      cardTitle: 'Patient Care & Symptom Assessment',
+      micMain: recording ? 'Listening... Speak now' : 'Tap to Speak',
+      micSub: recording ? 'Tap anywhere to finish speaking' : 'Voice Speech Recognition',
+      divider: 'or type symptoms',
+      placeholder: 'Describe patient symptoms in detail (e.g. High fever, sore throat, or difficulty breathing)...',
+      trust: 'Hospital-Grade Confidentiality · DPDP Act 2023',
+      submit: 'Begin Clinical Evaluation',
+      evaluating: 'Evaluating Clinical Triage...'
+    };
+  };
+
+  const intakeTexts = getIntakeTexts(language, isRecording);
+
+  // Live red-flag screening as patient types
+  useEffect(() => {
+    const flag = checkClientSideRedFlags(typedInput);
+    setClientRedFlag(flag);
+  }, [typedInput]);
 
   const handleToggleVoice = () => {
     if (isRecording) {
@@ -29,594 +104,626 @@ export const LandingPage = () => {
     }
   };
 
-  const handleIntakeSubmit = (e) => {
-    if (e) e.preventDefault();
-    if (!typedInput.trim()) return;
-    setTriageData(prev => ({
-      ...prev,
-      user_input: typedInput.trim(),
-      conversation_history: [],
-      latest_response: null
-    }));
-    navigate('/describe', { presetText: typedInput.trim() });
+  // Direct Clinical Triage Execution right from the Landing Page
+  const executeTriage = async (overrideText) => {
+    const symptomText = (overrideText !== undefined ? overrideText : typedInput).trim();
+    if (!symptomText) {
+      if (inputRef.current) inputRef.current.focus();
+      return;
+    }
+
+    if (isRecording) {
+      speechService.stopListening();
+      setIsRecording(false);
+    }
+
+    setIsEvaluating(true);
+
+    try {
+      const patientContext = activePatient ? {
+        name: activePatient.full_name,
+        relationship: activePatient.relationship,
+        age: activePatient.date_of_birth
+          ? Math.abs(new Date(Date.now() - new Date(activePatient.date_of_birth).getTime()).getUTCFullYear() - 1970)
+          : null,
+        conditions: activePatient.existing_conditions || ''
+      } : null;
+
+      const response = await runTriage({
+        user_input: symptomText,
+        language: language === 'auto' ? 'auto' : language,
+        conversation_history: [],
+        patient_context: patientContext
+      });
+
+      const sessId = `sess-${Date.now()}`;
+      setTriageData({
+        user_input: symptomText,
+        detected_language: language,
+        conversation_history: [],
+        latest_response: response,
+        sessionId: sessId
+      });
+
+      // Persist session to database records
+      supabaseService.recordTriageSession({
+        sessionId: sessId,
+        userInput: symptomText,
+        detectedLanguage: language,
+        conversationHistory: [],
+        decision: response
+      });
+
+      setIsEvaluating(false);
+
+      // Direct navigation without opening /describe
+      if (response.requires_emergency_path || response.urgency === 'immediate') {
+        navigate('/emergency');
+      } else if (response.follow_up_question) {
+        navigate('/followup');
+      } else {
+        navigate('/result');
+      }
+    } catch (err) {
+      console.error('Triage execution failed:', err);
+      setIsEvaluating(false);
+      navigate('/result');
+    }
   };
 
-  const loadBenchmarkCase = (caseText) => {
-    setTriageData(prev => ({
-      ...prev,
-      user_input: caseText,
-      conversation_history: [],
-      latest_response: null
-    }));
-    navigate('/describe', { presetText: caseText });
+  const handleIntakeSubmit = (e) => {
+    if (e) e.preventDefault();
+    executeTriage();
+  };
+
+  const handlePresetClick = (presetText) => {
+    setTypedInput(presetText);
+    executeTriage(presetText);
   };
 
   return (
     <div className="landing-page-root">
-      {/* 1. FULL-SCREEN IMMERSIVE HERO SHOWCASE */}
-      <section className="hero-showcase">
-        <div className="hero-gradient-overlay"></div>
+      {/* 1. HERO SHOWCASE WITH ROUNDED CORNERS */}
+      <div className="landing-hero-backdrop">
+        <section className="hero-showcase">
+          <div className="hero-gradient-overlay"></div>
 
-        <div className="hero-split-grid">
-          {/* Left Column: Clinical Care Navigation Identity & Trust */}
-          <div className="hero-brand-col">
-            <div className="hero-kicker">
-              <Sparkles size={14} color="#38bdf8" />
-              <span>{t('hero_kicker')}</span>
+          <div className="hero-split-grid">
+            {/* Left Column: Title Only (Clutter-Free) */}
+            <div className="hero-brand-col">
+              <h1 className="hero-headline">
+                Your Personalized<br />
+                <span className="hero-headline-highlight">Care Navigation</span> Strategy
+              </h1>
             </div>
 
-            <h1 className="hero-headline">
-              {t('hero_headline_1')}<br />
-              <span className="hero-headline-highlight">{t('hero_headline_2')}</span> {t('hero_headline_3')}
-            </h1>
-
-            <p className="hero-description">
-              {t('hero_description')}
-            </p>
-
-            <div className="hero-trust-badges-row">
-              <span className="hero-trust-pill">
-                <ShieldCheck size={14} color="#38bdf8" />
-                <span>112 Emergency Redirection</span>
-              </span>
-              <span className="hero-trust-pill">
-                <Stethoscope size={14} color="#34d399" />
-                <span>140+ Verified Clinical Fleet</span>
-              </span>
-              <span className="hero-trust-pill">
-                <Activity size={14} color="#38bdf8" />
-                <span>Sub-2s Safe Triage</span>
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
-              <button
-                type="button"
-                className="btn-hero-white"
-                onClick={() => navigate('/describe', { startListening: true })}
-              >
-                <Mic size={18} color="#0284c7" />
-                <span>{t('start_voice_assessment')}</span>
-                <span className="pill-arrow-icon" style={{ background: '#0284c7' }}>
-                  <ArrowRight size={12} color="#ffffff" />
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className="btn-hero-glass"
-                onClick={() => navigate('/emergency')}
-                style={{ borderColor: 'rgba(239, 68, 68, 0.45)', color: '#fecaca' }}
-              >
-                <PhoneCall size={16} color="#ef4444" />
-                <span>Emergency 112</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Right Column: Luminous Frosted Glass Live Intake Console */}
-          <div className="hero-intake-card">
-            <div className="intake-card-header">
-              <div>
-                <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: '#0284c7', letterSpacing: '0.08em' }}>
-                  LIVE SYMPTOM INTAKE
-                </span>
-                <h2 className="intake-card-title">What is the patient experiencing?</h2>
+            {/* Right Column: Minimal, Clutter-Free Clinical Assessment Panel */}
+            <div className="hero-intake-card">
+              <div className="intake-card-header">
+                <h2 className="intake-card-title">
+                  {intakeTexts.cardTitle}
+                </h2>
               </div>
 
-              <div className="intake-status-badge">
-                <span className="intake-status-pulse"></span>
-                <span>Clinical Audio Active</span>
-              </div>
-            </div>
-
-            {activePatient && (
-              <div
-                className="nav-patient-badge"
-                style={{ padding: '5px 12px', fontSize: '0.8rem', marginBottom: '12px', display: 'inline-flex', cursor: 'pointer' }}
-                onClick={() => navigate('/settings')}
-                title="Switch active patient in Settings"
-              >
-                <span className="patient-pulse-dot"></span>
-                <span>Active: <strong>{activePatient.full_name}</strong> ({activePatient.relationship}) • Switch</span>
-              </div>
-            )}
-
-            {/* Tap to Speak in Lighter Sky Blue */}
-            <div className="triage-voice-console" style={{ margin: '10px 0 14px 0', padding: '12px 16px' }}>
-              <button
-                type="button"
-                className={`btn-tap-to-record ${isRecording ? 'recording' : ''}`}
-                onClick={handleToggleVoice}
-              >
-                <div className="mic-badge-circle">
-                  {isRecording ? <MicOff size={20} color="#ffffff" /> : <Mic size={20} color="#ffffff" />}
-                </div>
-                <div className="btn-tap-text-group">
-                  <span className="btn-tap-primary">
-                    {isRecording ? 'बोलना बंद करें · Stop Speaking' : 'बोलने के लिए दबाएँ · Tap to Speak'}
-                  </span>
-                  <span className="btn-tap-secondary">
-                    {isRecording ? 'Listening in real-time...' : 'Hindi · English · Hinglish Voice Recognition'}
-                  </span>
-                </div>
-              </button>
-
-              <div className="voice-console-row" style={{ width: '100%', marginTop: '6px' }}>
-                <span style={{ fontSize: '0.78rem', color: '#0369a1', fontWeight: 700 }}>
-                  {isRecording ? 'Voice Active · बोलिए, सुन रहे हैं...' : 'AI Clinical Audio Ready'}
-                </span>
-                <div className="audio-frequency-bars">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(i => (
-                    <div key={i} className={`audio-frequency-bar ${isRecording ? 'listening' : ''}`}></div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Text Input & Benchmark Submit */}
-            <form onSubmit={handleIntakeSubmit}>
-              <textarea
-                className="form-input-clean"
-                rows={3}
-                style={{ resize: 'vertical', minHeight: '82px', marginBottom: '10px' }}
-                placeholder={t('symptom_placeholder')}
-                value={typedInput}
-                onChange={(e) => setTypedInput(e.target.value)}
-              />
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Presets:</span>
+              {/* Red-Flag Safety Alert Banner (Triggered only on emergency terms) */}
+              {clientRedFlag && (
+                <div style={{
+                  background: '#fef2f2',
+                  border: '1.5px solid #f87171',
+                  borderRadius: '12px',
+                  padding: '10px 14px',
+                  marginBottom: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <AlertOctagon size={20} color="#dc2626" style={{ flexShrink: 0 }} />
+                    <div style={{ fontSize: '0.8rem', color: '#991b1b', lineHeight: 1.35 }}>
+                      <strong>Possible Clinical Emergency ({clientRedFlag.label})</strong>: Direct 112 escalation recommended.
+                    </div>
+                  </div>
                   <button
                     type="button"
-                    className="clinical-preset-pill"
-                    onClick={() => loadBenchmarkCase('Papa ko do din se bukhar hai aur khansi bhi')}
+                    className="btn btn-danger"
+                    style={{ background: '#dc2626', borderColor: '#b91c1c', padding: '6px 14px', fontSize: '0.8rem', fontWeight: 700, flexShrink: 0, animation: 'ting-emergency 2s infinite ease-in-out' }}
+                    onClick={() => navigate('/emergency')}
                   >
-                    <span className="preset-dot dot-blue"></span>
-                    <span>Fever & Cough (Hinglish)</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="clinical-preset-pill"
-                    onClick={() => loadBenchmarkCase('Halka bukhar hai, saans lene mein koi dikkat nahi hai')}
-                  >
-                    <span className="preset-dot dot-green"></span>
-                    <span>Negation Check</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="clinical-preset-pill red-flag"
-                    onClick={() => loadBenchmarkCase('Saans nahi aa rahi, behosh ho rahe hain')}
-                  >
-                    <span className="preset-dot dot-red"></span>
-                    <span>Emergency 112</span>
+                    Call 112
                   </button>
                 </div>
+              )}
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', flexWrap: 'wrap', gap: '8px' }}>
-                  <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                    🔒 DPDP Act 2023 Compliant · Safe Routing Only
+              {/* Direct Minimal Intake Form */}
+              <form onSubmit={handleIntakeSubmit}>
+                {/* Major Voice Intake Big Button */}
+                <button
+                  type="button"
+                  className={`hero-speech-capsule-btn ${isRecording ? 'is-recording' : ''}`}
+                  onClick={handleToggleVoice}
+                  disabled={isEvaluating}
+                  aria-label={intakeTexts.micMain}
+                >
+                  <div className="speech-capsule-mic-circle">
+                    {isRecording ? <MicOff size={24} color="#ffffff" strokeWidth={2.2} /> : <Mic size={24} color="#ffffff" strokeWidth={2.2} />}
+                  </div>
+                  <div className="speech-capsule-info">
+                    <div className="speech-capsule-main-text">
+                      {intakeTexts.micMain}
+                    </div>
+                    <div className="speech-capsule-sub-text">
+                      {intakeTexts.micSub}
+                    </div>
+                  </div>
+                  {isRecording && (
+                    <div className="speech-capsule-waves">
+                      <span className="wave-bar bar-1"></span>
+                      <span className="wave-bar bar-2"></span>
+                      <span className="wave-bar bar-3"></span>
+                      <span className="wave-bar bar-4"></span>
+                      <span className="wave-bar bar-5"></span>
+                    </div>
+                  )}
+                </button>
+
+                {/* Minimal divider */}
+                <div style={{ position: 'relative', textAlign: 'center', margin: '14px 0 12px 0' }}>
+                  <div style={{ height: '1px', background: '#e2eaf4', width: '100%' }}></div>
+                  <span style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    background: '#ffffff',
+                    padding: '0 10px',
+                    fontSize: '0.73rem',
+                    color: '#94a3b8',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em'
+                  }}>
+                    {intakeTexts.divider}
                   </span>
+                </div>
+
+                <div style={{
+                  background: '#f8fafc',
+                  border: '1.5px solid #d4e0ee',
+                  borderRadius: '14px',
+                  padding: '12px 14px',
+                  marginBottom: '14px',
+                  transition: 'border-color 0.2s ease'
+                }}>
+                  <textarea
+                    ref={inputRef}
+                    className="form-input-clean"
+                    rows={3}
+                    style={{
+                      resize: 'none',
+                      width: '100%',
+                      background: 'transparent',
+                      border: 'none',
+                      outline: 'none',
+                      fontSize: '0.92rem',
+                      lineHeight: 1.5,
+                      color: '#0f172a',
+                      padding: 0
+                    }}
+                    placeholder={intakeTexts.placeholder}
+                    value={typedInput}
+                    onChange={(e) => setTypedInput(e.target.value)}
+                    disabled={isEvaluating}
+                  />
+                </div>
+
+                {/* Submission & Trust Row (Icons Only, No Emojis) */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.74rem', color: '#64748b' }}>
+                    <ShieldCheck size={15} color="#3f64ae" />
+                    <span>{intakeTexts.trust}</span>
+                  </div>
 
                   <button
                     type="submit"
                     className="btn-cta-pill"
-                    disabled={!typedInput.trim()}
+                    disabled={!typedInput.trim() || isEvaluating}
+                    style={{
+                      padding: '10px 22px',
+                      background: isEvaluating
+                        ? '#94a3b8'
+                        : (!typedInput.trim()
+                          ? '#94a3b8'
+                          : '#2b4984'),
+                      cursor: !typedInput.trim() || isEvaluating ? 'not-allowed' : 'pointer'
+                    }}
                   >
-                    <span>{t('run_triage_btn')}</span>
-                    <span className="pill-arrow-icon" style={{ background: '#0369a1' }}>
-                      <ArrowRight size={12} color="#ffffff" />
-                    </span>
+                    {isEvaluating ? (
+                      <>
+                        <Loader2 size={16} className="spin-icon" />
+                        <span>{intakeTexts.evaluating}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>{intakeTexts.submit}</span>
+                        <span className="pill-arrow-icon" style={{ background: '#1e3560' }}>
+                          <ArrowRight size={12} color="#ffffff" />
+                        </span>
+                      </>
+                    )}
                   </button>
                 </div>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
-        </div>
 
-        {/* Scroll down indicator to explore rest of page */}
-        <a
-          href="#health-programs"
-          className="hero-scroll-indicator"
-          onClick={(e) => {
-            e.preventDefault();
-            const el = document.getElementById('health-programs');
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
-          }}
-        >
-          <span>Explore Care Pathways & Verified Fleet</span>
-          <ChevronRight size={14} style={{ transform: 'rotate(90deg)' }} />
-        </a>
-      </section>
+          {/* Scroll down indicator to explore rest of page */}
+          <a
+            href="#care-pathways"
+            className="hero-scroll-indicator"
+            onClick={(e) => {
+              e.preventDefault();
+              const el = document.getElementById('care-pathways');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+          >
+            <span>Explore Clinical Care Pathways &amp; Fleet</span>
+            <ChevronRight size={14} style={{ transform: 'rotate(90deg)' }} />
+          </a>
+        </section>
+      </div>
 
-      {/* Main Flow Padding Container for Lower Sections */}
-      <div id="health-programs" className="landing-sections-wrapper">
+      {/* Main Flow Container for Lower Sections */}
+      <div id="care-pathways" className="landing-sections-wrapper">
 
-        {/* 3. HEALTH PROGRAMS -> CLINICAL CARE PATHWAYS (Matches GeneX 6-Card Grid) */}
-        <section>
-          <h2 className="section-title-center">Health Programs</h2>
+        {/* 1. CLINICAL CARE PATHWAYS (4 Authentic CareCompass Response Tiers) */}
+        <section style={{ marginBottom: '56px' }}>
+          <h2 className="section-title-center">Clinical Care Pathways</h2>
           <p className="section-subtitle-center">
-            Evidence-based clinical routing connecting patients to verified nearby medical responders across routine, same-day, and immediate urgency tiers.
+            CareCompass determines the safest response tier for your symptoms in seconds — strictly routing without guessing medical diagnoses or prescribing pharmaceuticals.
           </p>
 
           <div className="program-cards-grid">
-            {/* Card 1: Nurse Home Visit */}
-            <div className="program-card">
+            {/* Pathway 1: Registered Nurse Home Visit */}
+            <div className="program-card pathway-nurse" onClick={() => navigate('/caregivers')}>
               <div className="program-card-header">
-                <h3>Basic Diagnostics</h3>
-                <div className="program-who-for">
-                  <strong>Who it's for:</strong> Individuals who want to assess their current health status, check vitals, or identify early markers of fever or viral illness.
+                <div className="program-card-top-meta">
+                  <span className="program-status-pill" style={{ color: '#3f64ae' }}>
+                    <span className="program-radar-dot"></span>
+                    <span>Live in Sector Fleet</span>
+                  </span>
+                  <Stethoscope size={18} color="#3f64ae" />
                 </div>
-                <div className="program-details-box">
-                  <strong>What's included:</strong> Full vitals panel, blood pressure, SPO2, bedside clinical assessment, and direct caregiver handoff summary.
+                <h3>Registered Nurse Home Visit</h3>
+                <div className="program-who-for">
+                  Bedside clinical checks (BP, SpO2, Temperature), throat inspection, wound dressing, and post-viral monitoring at home.
+                </div>
+                <div className="program-tags-strip">
+                  <span className="program-feature-tag">Portable Vitals Kit</span>
+                  <span className="program-feature-tag">Medication Adherence</span>
+                  <span className="program-feature-tag">Doctor Memo Review</span>
                 </div>
               </div>
 
               <div className="program-card-footer">
                 <div className="program-price-eta">
-                  <span className="program-price-val">~45m</span>
+                  <span className="program-price-val">~30–45m</span>
                   <span className="program-price-sub">Arrival Window</span>
                 </div>
                 <button
                   type="button"
-                  className="program-learn-pill"
-                  onClick={() => navigate('/caregivers')}
+                  className="program-action-btn"
+                  onClick={(e) => { e.stopPropagation(); navigate('/caregivers'); }}
                 >
-                  <span>Learn more</span>
-                  <ArrowRight size={14} />
+                  <span>Dispatch Nurse</span>
+                  <ArrowRight size={13} />
                 </button>
               </div>
             </div>
 
-            {/* Card 2: 3D Molecular Spheres Graphic Card (Exact match to GeneX Card 2) */}
-            <div className="program-card program-card-pattern" style={{ padding: '24px 20px', minHeight: '300px' }}>
-              <svg width="100%" height="160" viewBox="0 0 280 160" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto 8px auto' }}>
-                <defs>
-                  <radialGradient id="molSphereA" cx="30%" cy="30%" r="70%">
-                    <stop offset="0%" stopColor="#ffffff" />
-                    <stop offset="35%" stopColor="#7dd3fc" />
-                    <stop offset="85%" stopColor="#0284c7" />
-                    <stop offset="100%" stopColor="#0369a1" />
-                  </radialGradient>
-                  <radialGradient id="molSphereB" cx="30%" cy="30%" r="70%">
-                    <stop offset="0%" stopColor="#ffffff" />
-                    <stop offset="40%" stopColor="#bae6fd" />
-                    <stop offset="90%" stopColor="#38bdf8" />
-                    <stop offset="100%" stopColor="#0284c7" />
-                  </radialGradient>
-                  <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feDropShadow dx="0" dy="6" stdDeviation="6" floodColor="#0284c7" floodOpacity="0.25" />
-                  </filter>
-                </defs>
-                {/* DNA wave curve */}
-                <path d="M 15 130 Q 75 30, 140 90 T 265 50" stroke="#93c5fd" strokeWidth="2" strokeDasharray="4 4" fill="none" opacity="0.6" />
-                <path d="M 15 50 Q 75 140, 140 80 T 265 120" stroke="#93c5fd" strokeWidth="2" strokeDasharray="4 4" fill="none" opacity="0.6" />
-                {/* Molecular bonds */}
-                <line x1="55" y1="115" x2="105" y2="75" stroke="#93c5fd" strokeWidth="5" strokeLinecap="round" />
-                <line x1="105" y1="75" x2="175" y2="95" stroke="#93c5fd" strokeWidth="5" strokeLinecap="round" />
-                <line x1="175" y1="95" x2="225" y2="45" stroke="#93c5fd" strokeWidth="5" strokeLinecap="round" />
-                <line x1="105" y1="75" x2="135" y2="30" stroke="#93c5fd" strokeWidth="4" strokeLinecap="round" />
-                {/* 3D Molecular spheres */}
-                <circle cx="55" cy="115" r="20" fill="url(#molSphereA)" filter="url(#softGlow)" />
-                <circle cx="105" cy="75" r="28" fill="url(#molSphereB)" filter="url(#softGlow)" />
-                <circle cx="175" cy="95" r="24" fill="url(#molSphereA)" filter="url(#softGlow)" />
-                <circle cx="225" cy="45" r="18" fill="url(#molSphereB)" filter="url(#softGlow)" />
-                <circle cx="135" cy="30" r="13" fill="url(#molSphereA)" />
-              </svg>
-              <div style={{ textAlign: 'center' }}>
-                <h4 style={{ fontSize: '1.15rem', color: '#0369a1', fontWeight: 800, marginBottom: '4px' }}>
-                  Verified Provider Fleet
-                </h4>
-                <p style={{ fontSize: '0.82rem', color: '#475569', lineHeight: 1.45 }}>
-                  Over 140 registered RNs, EMTs, and teleconsultation general physicians active in Delhi-NCR.
-                </p>
-              </div>
-            </div>
-
-            {/* Card 3: Complete Longevity Program */}
-            <div className="program-card">
+            {/* Pathway 2: MBBS Teleconsultation */}
+            <div className="program-card pathway-doctor" onClick={() => navigate('/caregivers')}>
               <div className="program-card-header">
-                <h3>Complete Longevity Program</h3>
-                <div className="program-who-for">
-                  <strong>Who it's for:</strong> People who want a full personalized longevity strategy based on advanced diagnostics and medical expertise.
+                <div className="program-card-top-meta">
+                  <span className="program-status-pill" style={{ color: '#2563eb' }}>
+                    <span className="program-radar-dot" style={{ background: '#2563eb' }}></span>
+                    <span>Licensed MBBS Standby</span>
+                  </span>
+                  <PhoneCall size={18} color="#2563eb" />
                 </div>
-                <div className="program-details-box">
-                  <strong>What's included:</strong> Full biomarker audit, comprehensive medical history analysis, and personalized clinician check-ins.
+                <h3>General Physician Teleconsult</h3>
+                <div className="program-who-for">
+                  Direct 1-on-1 audio/video review for acute non-emergency symptoms, lab report analysis, and clinical triage verification.
+                </div>
+                <div className="program-tags-strip">
+                  <span className="program-feature-tag">Audio &amp; Video Call</span>
+                  <span className="program-feature-tag">Digital Health Memo</span>
+                  <span className="program-feature-tag">48h Safety Follow-up</span>
                 </div>
               </div>
 
               <div className="program-card-footer">
                 <div className="program-price-eta">
-                  <span className="program-price-val">₹2,800</span>
-                  <span className="program-price-sub">per year</span>
+                  <span className="program-price-val">&lt; 15m</span>
+                  <span className="program-price-sub">Direct Connect</span>
                 </div>
                 <button
                   type="button"
-                  className="program-learn-pill"
-                  onClick={() => navigate('/caregivers')}
+                  className="program-action-btn"
+                  style={{ color: '#2563eb', borderColor: 'rgba(37, 99, 235, 0.3)', background: 'rgba(37, 99, 235, 0.08)' }}
+                  onClick={(e) => { e.stopPropagation(); navigate('/caregivers'); }}
                 >
-                  <span>Learn more</span>
-                  <ArrowRight size={14} />
+                  <span>Consult Doctor</span>
+                  <ArrowRight size={13} />
                 </button>
               </div>
             </div>
 
-            {/* Card 4: 3D Molecular Spheres Graphic Card 2 (Exact match to GeneX Card 4) */}
-            <div className="program-card program-card-pattern" style={{ padding: '24px 20px', minHeight: '300px' }}>
-              <svg width="100%" height="160" viewBox="0 0 280 160" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto 8px auto' }}>
-                <defs>
-                  <radialGradient id="molSphereC" cx="30%" cy="30%" r="70%">
-                    <stop offset="0%" stopColor="#ffffff" />
-                    <stop offset="35%" stopColor="#5eead4" />
-                    <stop offset="85%" stopColor="#0d9488" />
-                    <stop offset="100%" stopColor="#0f766e" />
-                  </radialGradient>
-                  <radialGradient id="molSphereD" cx="30%" cy="30%" r="70%">
-                    <stop offset="0%" stopColor="#ffffff" />
-                    <stop offset="40%" stopColor="#a7f3d0" />
-                    <stop offset="90%" stopColor="#10b981" />
-                    <stop offset="100%" stopColor="#059669" />
-                  </radialGradient>
-                </defs>
-                {/* DNA wave curve */}
-                <path d="M 20 80 Q 80 140, 140 80 T 260 80" stroke="#99f6e4" strokeWidth="2" strokeDasharray="3 3" fill="none" opacity="0.6" />
-                <path d="M 20 80 Q 80 20, 140 80 T 260 80" stroke="#99f6e4" strokeWidth="2" strokeDasharray="3 3" fill="none" opacity="0.6" />
-                {/* Bonds */}
-                <line x1="50" y1="60" x2="110" y2="100" stroke="#99f6e4" strokeWidth="5" strokeLinecap="round" />
-                <line x1="110" y1="100" x2="170" y2="60" stroke="#99f6e4" strokeWidth="5" strokeLinecap="round" />
-                <line x1="170" y1="60" x2="230" y2="110" stroke="#99f6e4" strokeWidth="5" strokeLinecap="round" />
-                {/* Spheres */}
-                <circle cx="50" cy="60" r="22" fill="url(#molSphereC)" />
-                <circle cx="110" cy="100" r="26" fill="url(#molSphereD)" />
-                <circle cx="170" cy="60" r="24" fill="url(#molSphereC)" />
-                <circle cx="230" cy="110" r="19" fill="url(#molSphereD)" />
-              </svg>
-              <div style={{ textAlign: 'center' }}>
-                <h4 style={{ fontSize: '1.15rem', color: '#0369a1', fontWeight: 800, marginBottom: '4px' }}>
-                  Zero Under-Triage Risk
-                </h4>
-                <p style={{ fontSize: '0.82rem', color: '#475569', lineHeight: 1.45 }}>
-                  Emergency recall calibrated at 98.5% with strict safety margins to eliminate missed critical risks.
-                </p>
-              </div>
-            </div>
-
-            {/* Card 5: VIP Longevity Program */}
-            <div className="program-card">
+            {/* Pathway 3: Paramedic Rapid Response */}
+            <div className="program-card pathway-paramedic" onClick={() => navigate('/caregivers')}>
               <div className="program-card-header">
-                <h3>VIP Longevity Program</h3>
-                <div className="program-who-for">
-                  <strong>Who it's for:</strong> Individuals seeking a premium, highly personalized longevity program with continuous medical support.
+                <div className="program-card-top-meta">
+                  <span className="program-status-pill" style={{ color: '#d97706' }}>
+                    <span className="program-radar-dot"></span>
+                    <span>Urgent In-Home Fleet</span>
+                  </span>
+                  <Activity size={18} color="#d97706" />
                 </div>
-                <div className="program-details-box">
-                  <strong>What's included:</strong> 24/7 dedicated physician liaison, priority EMT dispatch standby, and quarterly metabolic mapping.
+                <h3>Paramedic Rapid Response</h3>
+                <div className="program-who-for">
+                  Moderate-to-severe symptoms requiring immediate bedside stabilization, oxygen administration, or escalation standby.
+                </div>
+                <div className="program-tags-strip">
+                  <span className="program-feature-tag">SpO2 / ECG Telemetry</span>
+                  <span className="program-feature-tag">Nebulizer Kit</span>
+                  <span className="program-feature-tag">Hospital Handshake</span>
                 </div>
               </div>
 
               <div className="program-card-footer">
                 <div className="program-price-eta">
-                  <span className="program-price-val">₹6,500</span>
-                  <span className="program-price-sub">per year</span>
+                  <span className="program-price-val">~15–20m</span>
+                  <span className="program-price-sub">Rapid Dispatch</span>
                 </div>
                 <button
                   type="button"
-                  className="program-learn-pill"
-                  onClick={() => navigate('/caregivers')}
+                  className="program-action-btn"
+                  style={{ color: '#d97706', borderColor: 'rgba(217, 119, 6, 0.3)', background: 'rgba(217, 119, 6, 0.08)' }}
+                  onClick={(e) => { e.stopPropagation(); navigate('/caregivers'); }}
                 >
-                  <span>Learn more</span>
-                  <ArrowRight size={14} />
+                  <span>EMT Fleet</span>
+                  <ArrowRight size={13} />
                 </button>
               </div>
             </div>
 
-            {/* Card 6: Online Health Monitoring */}
-            <div className="program-card">
+            {/* Pathway 4: Emergency 112 Redirection */}
+            <div className="program-card pathway-emergency" onClick={() => navigate('/emergency')}>
               <div className="program-card-header">
-                <h3>Online Health Monitoring</h3>
-                <div className="program-who-for">
-                  <strong>Who it's for:</strong> Patients who want ongoing medical guidance and health tracking from anywhere.
+                <div className="program-card-top-meta">
+                  <span className="program-status-pill" style={{ color: '#dc2626', background: '#fee2e2', borderColor: '#fca5a5' }}>
+                    <span className="program-radar-dot"></span>
+                    <span>Critical Red-Flag</span>
+                  </span>
+                  <AlertOctagon size={18} color="#dc2626" />
                 </div>
-                <div className="program-details-box">
-                  <strong>What's included:</strong> Real-time teleconsultation, remote vitals sync, and automated medication-safe navigation alerts.
+                <h3 style={{ color: '#991b1b' }}>Emergency 112 Escalation</h3>
+                <div className="program-who-for">
+                  Immediate redirection for chest pain, acute shortness of breath, sudden facial droop, or unresponsiveness.
+                </div>
+                <div className="program-tags-strip">
+                  <span className="program-feature-tag" style={{ background: '#fef2f2', borderColor: '#fecaca', color: '#991b1b' }}>Single-Tap 112</span>
+                  <span className="program-feature-tag" style={{ background: '#fef2f2', borderColor: '#fecaca', color: '#991b1b' }}>ER Hospital GPS</span>
+                  <span className="program-feature-tag" style={{ background: '#fef2f2', borderColor: '#fecaca', color: '#991b1b' }}>Family SMS Beacon</span>
                 </div>
               </div>
 
               <div className="program-card-footer">
                 <div className="program-price-eta">
-                  <span className="program-price-val">₹120</span>
-                  <span className="program-price-sub">per month</span>
+                  <span className="program-price-val" style={{ color: '#dc2626' }}>Instant</span>
+                  <span className="program-price-sub">Emergency Escalation</span>
                 </div>
                 <button
                   type="button"
-                  className="program-learn-pill"
-                  onClick={() => navigate('/caregivers')}
+                  className="program-action-btn"
+                  onClick={(e) => { e.stopPropagation(); navigate('/emergency'); }}
                 >
-                  <span>Learn more</span>
-                  <ArrowRight size={14} />
+                  <span>112 Protocol</span>
+                  <ArrowRight size={13} />
                 </button>
               </div>
             </div>
           </div>
         </section>
 
-        {/* 4. HOW YOUR PERSONALIZED PLAN IS BUILT (Matches GeneX 3-Step Cards with Photos) */}
+        {/* 2. HOW CARECOMPASS WORKS (Bento Journey Cards with Fluid Leak) */}
         <section className="how-it-works-section">
           <div className="flex-between" style={{ flexWrap: 'wrap', gap: '16px' }}>
             <div>
-              <h2 style={{ fontSize: '2.4rem', color: '#0369a1', margin: 0, letterSpacing: '-0.03em' }}>
-                How Your Personalized<br />Plan Is Built
+              <h2 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: '2.4rem', fontWeight: 600, color: '#101e33', margin: 0, letterSpacing: '-0.025em' }}>
+                How CareCompass Works
               </h2>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', maxWidth: '520px' }}>
-              <p style={{ fontSize: '0.88rem', color: '#64748b', lineHeight: 1.5, margin: 0 }}>
-                Your progress is continuously monitored, and the plan is reviewed and adjusted to ensure the safest care pathway for your long-term health and vitality.
+              <p style={{ fontSize: '0.92rem', color: '#4a6385', marginTop: '6px' }}>
+                From your first spoken word in Hindi or English to verified medical help at your doorstep.
               </p>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  type="button"
-                  style={{ width: '34px', height: '34px', borderRadius: '50%', border: '1px solid #cbd5e1', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}
-                >
-                  ←
-                </button>
-                <button
-                  type="button"
-                  style={{ width: '34px', height: '34px', borderRadius: '50%', border: 'none', background: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#ffffff' }}
-                >
-                  →
-                </button>
-              </div>
             </div>
           </div>
 
           <div className="how-it-works-grid">
-            {/* Step 1 */}
-            <div className="step-card">
-              <div className="step-card-image-box">
-                <img src="/step-voice-intake.jpg" alt="Data Collection" />
-                <span className="step-card-badge">Step 1</span>
+            {/* Step 1: Multilingual Voice Intake */}
+            <div className="framed-step-card" onClick={() => navigate('/describe')}>
+              <div className="framed-step-media">
+                <img src="/step-voice-intake.jpg" alt="Multilingual Voice Symptom Intake" />
               </div>
-              <div className="step-card-body">
-                <h4>Data Collection</h4>
+              <div className="framed-step-body">
+                <span className="framed-step-index">01. INTAKE</span>
+                <h3>Speak Naturally in Any Language</h3>
                 <p>
-                  Comprehensive health intake, multilingual voice analysis, and clinical biomarker screening to get a complete picture of patient condition.
+                  Describe symptoms in your everyday conversational language without navigating rigid dropdown menus or confusing medical forms.
                 </p>
               </div>
             </div>
 
-            {/* Step 2 */}
-            <div className="step-card">
-              <div className="step-card-image-box">
-                <img src="/step-medical-analysis.jpg" alt="Medical Analysis" />
-                <span className="step-card-badge">Step 2</span>
+            {/* Step 2: Clinical Safety Triage */}
+            <div className="framed-step-card" onClick={() => navigate('/describe')}>
+              <div className="framed-step-media">
+                <img src="/step-medical-analysis.jpg" alt="Clinical Safety Triage" />
               </div>
-              <div className="step-card-body">
-                <h4>Medical Analysis</h4>
+              <div className="framed-step-body">
+                <span className="framed-step-index">02. TRIAGE</span>
+                <h3>Zero-Guesswork Urgency Triage</h3>
                 <p>
-                  Our triage engine evaluates symptoms to identify hidden risks, metabolic indicators, red flags, and the safest urgency classification.
+                  Evaluates urgency and red flags to determine the safest care tier, strictly routing help without guessing diagnoses or prescribing pills.
                 </p>
               </div>
             </div>
 
-            {/* Step 3 */}
-            <div className="step-card">
-              <div className="step-card-image-box" style={{ background: 'linear-gradient(135deg, #0369a1 0%, #0284c7 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ textAlign: 'center', color: '#ffffff', padding: '20px' }}>
-                  <Clock size={40} color="#38bdf8" style={{ marginBottom: '8px' }} />
-                  <div style={{ fontWeight: 800, fontSize: '1.25rem' }}>Personalized Routing</div>
-                  <div style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>Automated T+2h Clinical Surveillance</div>
-                </div>
-                <span className="step-card-badge">Step 3</span>
+            {/* Step 3: Verified Proximity Dispatch */}
+            <div className="framed-step-card" onClick={() => navigate('/caregivers')}>
+              <div className="framed-step-media">
+                <img src="/step-proximity-dispatch.jpg" alt="Verified Caregiver Sector Proximity Dispatch" />
               </div>
-              <div className="step-card-body">
-                <h4>Personalized Plan</h4>
+              <div className="framed-step-body">
+                <span className="framed-step-index">03. PROXIMITY</span>
+                <h3>Sector Caregiver Matching</h3>
                 <p>
-                  We dispatch verified nurses, paramedics, or GP teleconsultations directly, continuously monitoring symptom stabilization until help arrives.
+                  Matches verified registered nurses, paramedics, and general physicians in your municipal sector ranked by distance, language spoken, and credentials.
+                </p>
+              </div>
+            </div>
+
+            {/* Step 4: Active Post-Booking Check-Ins */}
+            <div className="framed-step-card" onClick={() => navigate('/caregivers')}>
+              <div className="framed-step-media">
+                <img src="/step-active-surveillance.jpg" alt="Active Patient Surveillance and Check-In Loop" />
+              </div>
+              <div className="framed-step-body">
+                <span className="framed-step-index">04. SURVEILLANCE</span>
+                <h3>Follow-Up Until Help Arrives</h3>
+                <p>
+                  CareCompass checks patient stability (Better / Same / Worse) while the responder is en route, auto-escalating to emergency 112 if condition deteriorates.
                 </p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* 5. HOW IT WORKS SECTION (Matches GeneX Bottom Team Section) */}
+        {/* 3. BUILT FOR REAL INDIAN FAMILIES (3 Core Pillars with Fluid Leak) */}
         <section style={{ margin: '48px 0 24px 0' }}>
-          <h2 className="section-title-center" style={{ marginBottom: '28px' }}>How it works</h2>
-          
-          <div
-            className="surface-card"
-            style={{
-              background: 'linear-gradient(180deg, #ffffff 0%, #f8fafd 100%)',
-              border: '1px solid var(--card-border)',
-              borderRadius: 'var(--radius-xl)',
-              padding: '36px 32px',
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-              gap: '28px'
-            }}
-          >
-            <div>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#0284c7', fontWeight: 700, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
-                <ShieldCheck size={16} />
-                <span>CLINICAL GOVERNANCE</span>
+          <h2 className="section-title-center" style={{ marginBottom: '12px' }}>
+            Built for Indian Families &amp; Clinical Safety
+          </h2>
+          <p className="section-subtitle-center" style={{ marginBottom: '32px' }}>
+            Healthcare navigation designed specifically around family care dynamics, multi-channel accessibility, and strict data sovereignty.
+          </p>
+
+          <div className="pillars-spec-grid">
+            {/* Pillar 1: Multi-Member Family Vault */}
+            <div
+              className="pillar-spec-card"
+              style={{
+                '--pillar-leak-origin': '0% 100%',
+                '--pillar-leak-color': 'rgba(63, 100, 174, 0.16)',
+                '--pillar-accent': '#3f64ae'
+              }}
+              onClick={() => navigate('/settings')}
+            >
+              <div className="pillar-spec-card-content">
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#3f64ae', fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  <Users size={16} />
+                  <span>FAMILY HEALTH VAULT</span>
+                </div>
+                <h3>Manage Papa, Mummy &amp; Children</h3>
+                <p>
+                  Store chronic conditions (Diabetes, Hypertension, Asthma) for each family member so triage recommendations automatically factor in prior clinical context.
+                </p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
+                  <span style={{ fontSize: '0.74rem', background: '#f1f5f9', padding: '4px 8px', borderRadius: '6px', color: '#334155', fontWeight: 600 }}>Papa (62) · Type-2 Diabetes</span>
+                  <span style={{ fontSize: '0.74rem', background: '#f1f5f9', padding: '4px 8px', borderRadius: '6px', color: '#334155', fontWeight: 600 }}>Mummy (58) · HTN</span>
+                </div>
               </div>
-              <h3 style={{ fontSize: '1.45rem', color: '#0369a1', marginBottom: '10px' }}>
-                Zero Guesswork. Deterministic Safety.
-              </h3>
-              <p style={{ fontSize: '0.9rem', color: '#64748b', lineHeight: 1.55 }}>
-                CareCompass strictly routes healthcare needs without ever guessing condition diagnoses or prescribing pharmaceuticals. Designed specifically for Indian family care dynamics with full Hindi, English, and Hinglish speech processing.
-              </p>
+              <button
+                type="button"
+                className="program-action-btn"
+                onClick={(e) => { e.stopPropagation(); navigate('/settings'); }}
+              >
+                <span>Manage Family Profiles</span>
+                <ArrowRight size={13} />
+              </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, flexShrink: 0 }}>
-                  ✓
+            {/* Pillar 2: Phone IVR & WhatsApp Channels */}
+            <div
+              className="pillar-spec-card"
+              style={{
+                '--pillar-leak-origin': '50% 100%',
+                '--pillar-leak-color': 'rgba(13, 148, 136, 0.16)',
+                '--pillar-accent': '#0d9488'
+              }}
+              onClick={() => navigate('/call-sim')}
+            >
+              <div className="pillar-spec-card-content">
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#2563eb', fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  <Phone size={16} />
+                  <span>MULTICHANNEL ACCESS</span>
                 </div>
-                <div>
-                  <h4 style={{ fontSize: '1rem', color: '#0369a1', margin: 0 }}>Verified Sector Fleet</h4>
-                  <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '2px 0 0 0' }}>Registered nurses, certified paramedics, and MBBS doctors verified with credential checks.</p>
+                <h3>Toll-Free Phone Call &amp; WhatsApp</h3>
+                <p>
+                  Elderly relatives without smartphones can dial our toll-free phone number for voice triage in Hindi or English, or interact with our WhatsApp health bot.
+                </p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
+                  <span style={{ fontSize: '0.74rem', background: '#edf4fe', border: '1px solid #c8d9f0', padding: '4px 8px', borderRadius: '6px', color: '#1b3560', fontWeight: 600 }}>1800-CARE-COMPASS</span>
+                  <span style={{ fontSize: '0.74rem', background: '#edf4fe', border: '1px solid #c8d9f0', padding: '4px 8px', borderRadius: '6px', color: '#1b3560', fontWeight: 600 }}>WhatsApp Navigator</span>
                 </div>
               </div>
+              <button
+                type="button"
+                className="program-action-btn"
+                style={{ color: '#2563eb', borderColor: 'rgba(37, 99, 235, 0.3)', background: 'rgba(37, 99, 235, 0.08)' }}
+                onClick={(e) => { e.stopPropagation(); navigate('/call-sim'); }}
+              >
+                <span>Test Phone &amp; WhatsApp</span>
+                <ArrowRight size={13} />
+              </button>
+            </div>
 
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, flexShrink: 0 }}>
-                  !
+            {/* Pillar 3: DPDP Act 2023 Compliance */}
+            <div
+              className="pillar-spec-card"
+              style={{
+                '--pillar-leak-origin': '100% 100%',
+                '--pillar-leak-color': 'rgba(30, 58, 138, 0.16)',
+                '--pillar-accent': '#1e3a8a'
+              }}
+              onClick={() => navigate('/privacy')}
+            >
+              <div className="pillar-spec-card-content">
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#1e3a8a', fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  <ShieldCheck size={16} />
+                  <span>DATA PRIVACY &amp; SAFETY</span>
                 </div>
-                <div>
-                  <h4 style={{ fontSize: '1rem', color: '#0369a1', margin: 0 }}>Instant Emergency 112 Redirection</h4>
-                  <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '2px 0 0 0' }}>Any cardiac, respiratory, or unconsciousness red flags trigger immediate single-tap 112 escalation.</p>
+                <h3>DPDP Act 2023 &amp; Local Sovereignty</h3>
+                <p>
+                  Conforms strictly to India's Digital Personal Data Protection Act 2023. Explicit consent, hospital-grade encryption, zero advertising resale, and single-tap data erasure.
+                </p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
+                  <span style={{ fontSize: '0.74rem', background: '#edf4fe', border: '1px solid #c8d9f0', padding: '4px 8px', borderRadius: '6px', color: '#1b3560', fontWeight: 600 }}>SHA-256 Vault</span>
+                  <span style={{ fontSize: '0.74rem', background: '#edf4fe', border: '1px solid #c8d9f0', padding: '4px 8px', borderRadius: '6px', color: '#1b3560', fontWeight: 600 }}>Zero Ad Tracking</span>
                 </div>
               </div>
-
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, flexShrink: 0 }}>
-                  ★
-                </div>
-                <div>
-                  <h4 style={{ fontSize: '1rem', color: '#0369a1', margin: 0 }}>DPDP Act 2023 Compliant</h4>
-                  <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '2px 0 0 0' }}>Strict consent mechanisms and immediate record purge options with complete audit logging.</p>
-                </div>
-              </div>
+              <button
+                type="button"
+                className="program-action-btn"
+                style={{ color: '#1e3a8a', borderColor: 'rgba(30, 58, 138, 0.3)', background: 'rgba(30, 58, 138, 0.08)' }}
+                onClick={(e) => { e.stopPropagation(); navigate('/privacy'); }}
+              >
+                <span>View Privacy &amp; Consent</span>
+                <ArrowRight size={13} />
+              </button>
             </div>
           </div>
         </section>
       </div>
-
-      {/* Canvas Clean Footer */}
-      <footer className="canvas-footer">
-        <div className="canvas-footer-content">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <img src="/compass-logo.svg" alt="CareCompass" style={{ width: '24px', height: '24px' }} />
-            <span>CareCompass Medical Navigator · All patient data processed under DPDP Act 2023.</span>
-          </div>
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <a onClick={() => navigate('/dashboard')}>Clinical Metrics</a>
-            <a onClick={() => navigate('/call-sim')}>IVR Gateway</a>
-            <a onClick={() => navigate('/privacy')}>Data Privacy</a>
-            <a onClick={() => navigate('/emergency')} style={{ color: '#ef4444', fontWeight: 700 }}>Emergency (112)</a>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };

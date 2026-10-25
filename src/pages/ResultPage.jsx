@@ -53,38 +53,44 @@ export const ResultPage = () => {
       test_name: 'CBC (Complete Blood Count)',
       why_needed: 'Doctors evaluate WBC and lymphocyte counts to differentiate between viral and bacterial throat infections before prescribing medicines.',
       sample_type: 'Blood Sample (Doorstep collection)',
-      timing: 'Recommended before doctor consult or if persisting >48h'
+      timing: 'Recommended before doctor consult or if persisting >48h',
+      price: 299
     },
     {
       test_name: 'Throat Swab Culture / Strep Antigen Test',
       why_needed: 'Identifies Group A Streptococcus bacteria in the throat to confirm if antibiotics are medically required.',
       sample_type: 'Throat Swab (Doorstep collection)',
-      timing: 'Recommended if severe pain or tonsil redness occurs'
+      timing: 'Recommended if severe pain or tonsil redness occurs',
+      price: 499
     },
     {
       test_name: 'CRP (C-Reactive Protein)',
       why_needed: 'Measures the exact level of inflammation and infection in the throat and body.',
       sample_type: 'Blood Sample',
-      timing: 'If fever or persistent discomfort is present'
+      timing: 'If fever or persistent discomfort is present',
+      price: 399
     }
   ] : [
     {
       test_name: 'CBC & Platelet Count',
       why_needed: 'Monitors platelet levels and white blood cells to detect viral, dengue, or bacterial infection causes.',
       sample_type: 'Blood Sample (Doorstep collection)',
-      timing: 'Recommended when fever or body aches develop'
+      timing: 'Recommended when fever or body aches develop',
+      price: 299
     },
     {
       test_name: 'Dengue NS1 & Malarial Parasite Screen',
       why_needed: 'Early diagnostic screening to rule out seasonal viral or mosquito-borne fevers.',
       sample_type: 'Blood Sample',
-      timing: 'If fever lasts more than 24 hours'
+      timing: 'If fever lasts more than 24 hours',
+      price: 599
     },
     {
       test_name: 'Serum Electrolytes (Sodium, Potassium)',
       why_needed: 'Checks sodium and potassium levels to prevent dangerous dehydration from fatigue or fluid loss.',
       sample_type: 'Blood Sample',
-      timing: 'Recommended for weakness or reduced oral intake'
+      timing: 'Recommended for weakness or reduced oral intake',
+      price: 349
     }
   ];
 
@@ -96,6 +102,7 @@ export const ResultPage = () => {
     recommend: true,
     title: 'Book In-Person Personal Care Nurse Visit',
     badge: 'Certified Bedside Clinical Assessment',
+    price: 499,
     why_beneficial: 'A certified personal care nurse visits the patient at home to record accurate clinical vitals (blood pressure, SpO2 pulse oximeter, temperature), perform a physical throat and chest examination, and prepare an objective report for the consulting doctor.',
     services: [
       'Comprehensive vitals check (BP, SpO2 oxygen, pulse rate, temperature)',
@@ -106,6 +113,21 @@ export const ResultPage = () => {
   };
 
   const displayNurseOption = decision.nurse_care_option || fallbackNurseOption;
+
+  // Pricing calculation helpers
+  const getTestPrice = (test) => {
+    if (!test) return 299;
+    if (typeof test.price === 'number') return test.price;
+    if (test.price && !isNaN(parseInt(test.price))) return parseInt(test.price);
+    const name = (test.test_name || '').toLowerCase();
+    if (name.includes('cbc') || name.includes('complete blood')) return 299;
+    if (name.includes('throat') || name.includes('strep') || name.includes('swab')) return 499;
+    if (name.includes('crp') || name.includes('reactive protein')) return 399;
+    if (name.includes('dengue') || name.includes('malarial') || name.includes('malaria')) return 599;
+    if (name.includes('electrolyte') || name.includes('sodium') || name.includes('potassium')) return 349;
+    if (name.includes('sugar') || name.includes('glucose') || name.includes('hba1c')) return 399;
+    return 299;
+  };
 
   // Booking state
   const [showTestModal, setShowTestModal] = useState(false);
@@ -121,6 +143,12 @@ export const ResultPage = () => {
   const [nurseAddress, setNurseAddress] = useState('Sector 4, Rohini / Delhi NCR');
   const [nursePhone, setNursePhone] = useState('+91 98765 43210');
   const [nurseBookingData, setNurseBookingData] = useState(null);
+
+  const totalTestPrice = displayTests.reduce((acc, t) => acc + getTestPrice(t), 0);
+  const totalSelectedTestPrice = displayTests
+    .filter(t => selectedTests.includes(t.test_name))
+    .reduce((acc, t) => acc + getTestPrice(t), 0);
+  const nursePrice = displayNurseOption.price || 499;
 
   // Determine whether patient is healthy / routine self-care
   const isHealthyOrRoutine = !decision.care_type ||
@@ -173,6 +201,7 @@ export const ResultPage = () => {
     setTestBookingData({
       orderId,
       tests: selectedTests.length > 0 ? selectedTests : displayTests.map(t => t.test_name),
+      totalPrice: totalSelectedTestPrice,
       slot: testSlot,
       address: testAddress,
       phone: testPhone,
@@ -190,6 +219,7 @@ export const ResultPage = () => {
       orderId,
       nurseName: 'Sister Anjali Verma, RN',
       phone: '+91 98100 11223',
+      fee: nursePrice,
       slot: nurseSlot,
       address: nurseAddress,
       contact: nursePhone,
@@ -215,13 +245,13 @@ export const ResultPage = () => {
         <div className="surface-card">
           <div className="flex-between" style={{ marginBottom: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span className="clinical-badge" style={{ background: '#e0f2fe', color: '#0369a1', fontWeight: 600 }}>
+              <span className="clinical-badge" style={{ background: '#e0f2fe', color: '#325292', fontWeight: 600 }}>
                 {t('recommended_care')}
               </span>
               <span className="clinical-badge" style={{
-                background: decision.backend_connected !== false ? '#ecfdf5' : '#fefce8',
-                color: decision.backend_connected !== false ? '#047857' : '#854d0e',
-                border: decision.backend_connected !== false ? '1px solid #a7f3d0' : '1px solid #fef08a',
+                background: decision.backend_connected !== false ? '#edf4fe' : '#fefce8',
+                color: decision.backend_connected !== false ? '#1b3560' : '#854d0e',
+                border: decision.backend_connected !== false ? '1px solid #c8d9f0' : '1px solid #fef08a',
                 fontSize: '0.78rem',
                 fontWeight: 600
               }}>
@@ -260,13 +290,15 @@ export const ResultPage = () => {
           {decision.dynamic_context && (decision.dynamic_context.confirmed_symptoms?.length > 0 || decision.dynamic_context.ruled_out?.length > 0) && (
             <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8rem' }}>
               {decision.dynamic_context.confirmed_symptoms?.length > 0 && (
-                <span style={{ background: '#f0f9ff', color: '#0369a1', padding: '3px 10px', borderRadius: '999px', border: '1px solid #bae6fd' }}>
-                  ✓ Identified: {decision.dynamic_context.confirmed_symptoms.join(', ')}
+                <span style={{ background: '#f0f9ff', color: '#325292', padding: '3px 10px', borderRadius: '999px', border: '1px solid #bae6fd', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <CheckCircle2 size={13} />
+                  <span>Identified: {decision.dynamic_context.confirmed_symptoms.join(', ')}</span>
                 </span>
               )}
               {decision.dynamic_context.ruled_out?.length > 0 && (
-                <span style={{ background: '#ecfdf5', color: '#065f46', padding: '3px 10px', borderRadius: '999px', border: '1px solid #a7f3d0' }}>
-                  🛡️ Ruled out: {decision.dynamic_context.ruled_out.join(', ')}
+                <span style={{ background: '#edf4fe', color: '#1b3560', padding: '3px 10px', borderRadius: '999px', border: '1px solid #c8d9f0', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <ShieldCheck size={13} color="#3f64ae" />
+                  <span>Ruled out: {decision.dynamic_context.ruled_out.join(', ')}</span>
                 </span>
               )}
             </div>
@@ -279,7 +311,7 @@ export const ResultPage = () => {
               background: '#ffffff',
               padding: '20px',
               borderRadius: '12px',
-              border: '1.5px solid #0284c7',
+              border: '1.5px solid #3f64ae',
               boxShadow: '0 2px 6px rgba(2, 132, 199, 0.08)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
@@ -291,13 +323,13 @@ export const ResultPage = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#0284c7',
+                  color: '#3f64ae',
                   flexShrink: 0
                 }}>
                   <CheckCircle2 size={18} />
                 </div>
                 <div>
-                  <strong style={{ fontSize: '1.05rem', color: '#0369a1', display: 'block' }}>
+                  <strong style={{ fontSize: '1.05rem', color: '#325292', display: 'block' }}>
                     {decision.care_type === 'emergency_referral' ? t('emergency_actions_heading') : t('practical_steps_heading')}
                   </strong>
                   <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
@@ -321,7 +353,7 @@ export const ResultPage = () => {
                       width: '24px',
                       height: '24px',
                       borderRadius: '50%',
-                      background: '#0284c7',
+                      background: '#3f64ae',
                       color: '#ffffff',
                       display: 'flex',
                       alignItems: 'center',
@@ -346,8 +378,8 @@ export const ResultPage = () => {
           {homeCareList.length > 0 && (
             <div style={{ marginTop: '14px', background: '#f8fafc', padding: '16px 18px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                <HeartPulse size={18} color="#059669" />
-                <strong style={{ fontSize: '0.92rem', color: '#065f46' }}>
+                <HeartPulse size={18} color="#3f64ae" />
+                <strong style={{ fontSize: '0.92rem', color: '#1b3560' }}>
                   Recommended Home Comfort & Soothing Care
                 </strong>
               </div>
@@ -392,8 +424,8 @@ export const ResultPage = () => {
         </div>
 
         {/* 1. DOCTOR-RECOMMENDED DIAGNOSTIC LAB TESTS CARD */}
-        <div className="surface-card" style={{ border: '1px solid #bae6fd', background: 'linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%)' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', marginBottom: '14px' }}>
+        <div className="surface-card" style={{ border: '1px solid #d4e0ee', background: '#ffffff' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{
                 width: '40px',
@@ -403,13 +435,13 @@ export const ResultPage = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#0284c7',
+                color: '#3f64ae',
                 flexShrink: 0
               }}>
                 <FlaskConical size={22} />
               </div>
               <div>
-                <h4 style={{ margin: 0, fontSize: '1.08rem', color: '#0369a1', fontWeight: 700 }}>
+                <h4 style={{ margin: 0, fontSize: '1.08rem', color: '#325292', fontWeight: 700 }}>
                   {t('recommended_tests_title')}
                 </h4>
                 <p style={{ margin: '3px 0 0 0', fontSize: '0.82rem', color: '#64748b', lineHeight: 1.45 }}>
@@ -417,18 +449,33 @@ export const ResultPage = () => {
                 </p>
               </div>
             </div>
-            <span style={{
-              fontSize: '0.74rem',
-              fontWeight: 600,
-              background: '#e0f2fe',
-              color: '#0369a1',
-              padding: '4px 10px',
-              borderRadius: '999px',
-              border: '1px solid #bae6fd',
-              whiteSpace: 'nowrap'
-            }}>
-              {displayTests.length} Tests
-            </span>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{
+                fontSize: '0.82rem',
+                fontWeight: 800,
+                background: '#3f64ae',
+                color: '#ffffff',
+                padding: '4px 12px',
+                borderRadius: '999px',
+                boxShadow: '0 2px 6px rgba(2, 132, 199, 0.25)',
+                whiteSpace: 'nowrap'
+              }}>
+                Package: ₹{totalTestPrice}
+              </span>
+              <span style={{
+                fontSize: '0.74rem',
+                fontWeight: 600,
+                background: '#edf4fe',
+                color: '#1b3560',
+                padding: '4px 10px',
+                borderRadius: '999px',
+                border: '1px solid #c8d9f0',
+                whiteSpace: 'nowrap'
+              }}>
+                Free Doorstep Pickup
+              </span>
+            </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
@@ -444,23 +491,41 @@ export const ResultPage = () => {
                   <span style={{ fontWeight: 700, fontSize: '0.94rem', color: '#0f172a' }}>
                     {test.test_name}
                   </span>
-                  {test.sample_type && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                    {test.sample_type && (
+                      <span style={{
+                        fontSize: '0.74rem',
+                        background: '#edf4fe',
+                        color: '#1b3560',
+                        border: '1px solid #c8d9f0',
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        fontWeight: 600,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        <FlaskConical size={12} color="#3f64ae" />
+                        <span>{test.sample_type}</span>
+                      </span>
+                    )}
                     <span style={{
-                      fontSize: '0.74rem',
-                      background: '#ecfdf5',
-                      color: '#047857',
-                      border: '1px solid #a7f3d0',
+                      fontSize: '0.84rem',
+                      fontWeight: 800,
+                      color: '#3f64ae',
+                      background: '#f0f9ff',
+                      border: '1px solid #bae6fd',
                       padding: '2px 8px',
                       borderRadius: '6px',
-                      fontWeight: 600,
                       whiteSpace: 'nowrap'
                     }}>
-                      🏠 {test.sample_type}
+                      ₹{getTestPrice(test)}
                     </span>
-                  )}
+                  </div>
                 </div>
                 <p style={{ margin: '0 0 6px 0', fontSize: '0.86rem', color: '#334155', lineHeight: 1.45 }}>
-                  <strong style={{ color: '#0369a1' }}>Doctor rationale:</strong> {test.why_needed}
+                  <strong style={{ color: '#325292' }}>Doctor rationale:</strong> {test.why_needed}
                 </p>
                 {test.timing && (
                   <div style={{ fontSize: '0.78rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -476,21 +541,23 @@ export const ResultPage = () => {
           <div style={{ marginTop: '16px' }}>
             {testBookingData ? (
               <div style={{
-                background: '#ecfdf5',
-                border: '1px solid #a7f3d0',
+                background: '#edf4fe',
+                border: '1px solid #c8d9f0',
                 borderRadius: '10px',
                 padding: '14px 16px'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#065f46', fontWeight: 700, fontSize: '0.94rem', marginBottom: '6px' }}>
-                  <CheckCheck size={20} color="#059669" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1b3560', fontWeight: 700, fontSize: '0.94rem', marginBottom: '6px' }}>
+                  <CheckCheck size={20} color="#3f64ae" />
                   <span>At-Home Sample Collection Confirmed! (Ref: {testBookingData.orderId})</span>
                 </div>
-                <div style={{ fontSize: '0.84rem', color: '#047857', lineHeight: 1.5 }}>
+                <div style={{ fontSize: '0.84rem', color: '#2d4261', lineHeight: 1.5 }}>
+                  <div><strong>Total Amount:</strong> ₹{testBookingData.totalPrice || totalTestPrice} (Pay on Doorstep via UPI / Cash)</div>
                   <div><strong>Phlebotomist Assigned:</strong> {testBookingData.phlebotomist}</div>
                   <div><strong>Collection Slot:</strong> {testBookingData.slot}</div>
                   <div><strong>Address:</strong> {testBookingData.address}</div>
-                  <div style={{ marginTop: '6px', fontSize: '0.78rem', color: '#065f46' }}>
-                    ✓ NABL Accredited Partner Lab · Digital reports delivered within 12-24 hours via WhatsApp.
+                  <div style={{ marginTop: '6px', fontSize: '0.78rem', color: '#1b3560', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <CheckCircle2 size={13} color="#3f64ae" />
+                    <span>NABL Accredited Partner Lab · Digital reports delivered within 12-24 hours via WhatsApp.</span>
                   </div>
                 </div>
               </div>
@@ -500,7 +567,7 @@ export const ResultPage = () => {
                 className="btn btn-primary btn-block"
                 onClick={() => setShowTestModal(true)}
                 style={{
-                  background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                  background: '#3f64ae',
                   fontWeight: 600,
                   display: 'flex',
                   alignItems: 'center',
@@ -510,7 +577,7 @@ export const ResultPage = () => {
                 }}
               >
                 <FlaskConical size={18} />
-                <span>{t('book_test_btn')}</span>
+                <span>{t('book_test_btn')} • ₹{totalTestPrice}</span>
                 <ArrowRight size={16} />
               </button>
             )}
@@ -518,30 +585,47 @@ export const ResultPage = () => {
         </div>
 
         {/* 2. PERSONAL CARE NURSE RECOMMENDATION CARD */}
-        <div className="surface-card" style={{ border: '1px solid #cbd5e1', background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '12px' }}>
+        <div className="surface-card" style={{ border: '1px solid #d4e0ee', background: '#ffffff' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{
                 width: '40px',
                 height: '40px',
                 borderRadius: '10px',
-                background: '#ecfdf5',
+                background: '#edf4fe',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#059669',
+                color: '#3f64ae',
                 flexShrink: 0
               }}>
                 <Stethoscope size={22} />
               </div>
               <div>
-                <h4 style={{ margin: 0, fontSize: '1.08rem', color: '#0f172a', fontWeight: 700 }}>
+                <h4 style={{ margin: 0, fontSize: '1.08rem', color: '#101e33', fontWeight: 700, fontFamily: "'Fraunces', Georgia, serif" }}>
                   {displayNurseOption.title || t('nurse_care_title')}
                 </h4>
-                <span style={{ fontSize: '0.76rem', color: '#059669', fontWeight: 600 }}>
+                <span style={{ fontSize: '0.76rem', color: '#3f64ae', fontWeight: 600 }}>
                   {displayNurseOption.badge || 'Certified In-Person Clinical Assessment'}
                 </span>
               </div>
+            </div>
+
+            {/* Price Tag Badge */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+              <div style={{
+                fontSize: '1.05rem',
+                fontWeight: 800,
+                color: '#1b3560',
+                background: '#edf4fe',
+                border: '1.5px solid #c8d9f0',
+                padding: '4px 12px',
+                borderRadius: 'var(--radius-pill)',
+                whiteSpace: 'nowrap'
+              }}>
+                ₹{nursePrice} <span style={{ fontSize: '0.76rem', fontWeight: 600, color: '#3f64ae' }}>/ Visit</span>
+              </div>
+              <span style={{ fontSize: '0.72rem', color: '#3f64ae', fontWeight: 600 }}>All-inclusive bedside check</span>
             </div>
           </div>
 
@@ -568,21 +652,23 @@ export const ResultPage = () => {
           {/* Nurse Booking Action / Confirmed Status */}
           {nurseBookingData ? (
             <div style={{
-              background: '#ecfdf5',
-              border: '1px solid #a7f3d0',
+              background: '#edf4fe',
+              border: '1px solid #c8d9f0',
               borderRadius: '10px',
               padding: '14px 16px'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#065f46', fontWeight: 700, fontSize: '0.94rem', marginBottom: '6px' }}>
-                <CheckCheck size={20} color="#059669" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1b3560', fontWeight: 700, fontSize: '0.94rem', marginBottom: '6px' }}>
+                <CheckCheck size={20} color="#3f64ae" />
                 <span>Personal Care Nurse Dispatched! (Ref: {nurseBookingData.orderId})</span>
               </div>
-              <div style={{ fontSize: '0.84rem', color: '#047857', lineHeight: 1.5 }}>
+              <div style={{ fontSize: '0.84rem', color: '#2d4261', lineHeight: 1.5 }}>
+                <div><strong>Visit Fee:</strong> ₹{nurseBookingData.fee || nursePrice} (Payable to nurse via Cash/UPI after visit)</div>
                 <div><strong>Assigned Nurse:</strong> {nurseBookingData.nurseName} ({nurseBookingData.phone})</div>
                 <div><strong>Arrival Window:</strong> {nurseBookingData.slot} ({nurseBookingData.arrivalEstimate})</div>
                 <div><strong>Patient Address:</strong> {nurseBookingData.address}</div>
-                <div style={{ marginTop: '6px', fontSize: '0.78rem', color: '#065f46' }}>
-                  ✓ In-home vitals kit, SpO2 monitor & physical exam tools equipped. Live SMS alert dispatched to family contact.
+                <div style={{ marginTop: '6px', fontSize: '0.78rem', color: '#1b3560', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <CheckCircle2 size={13} color="#3f64ae" />
+                  <span>In-home vitals kit, SpO2 monitor &amp; physical exam tools equipped. Live SMS alert dispatched to family contact.</span>
                 </div>
               </div>
             </div>
@@ -598,11 +684,11 @@ export const ResultPage = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
-                  background: '#047857'
+                  background: '#3f64ae'
                 }}
               >
                 <UserCheck size={18} />
-                <span>{t('book_nurse_btn')}</span>
+                <span>{t('book_nurse_btn')} • ₹{nursePrice}</span>
                 <ArrowRight size={16} />
               </button>
               <button
@@ -611,7 +697,7 @@ export const ResultPage = () => {
                 onClick={() => navigate('/caregivers')}
                 style={{ fontSize: '0.84rem', padding: '8px' }}
               >
-                Browse All Qualified Nurses in Directory
+                Browse All Qualified Nurses in Directory (₹499)
               </button>
             </div>
           )}
@@ -624,7 +710,7 @@ export const ResultPage = () => {
       {/* RIGHT COLUMN: Dispatch & Action Panel */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         <div className="surface-card">
-          <h3 style={{ fontSize: '1.2rem', marginBottom: '6px' }}>{t('what_to_do_next')}</h3>
+          <h3 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: '1.25rem', marginBottom: '6px', color: '#101e33' }}>{t('what_to_do_next')}</h3>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '18px', lineHeight: 1.5 }}>
             {isImmediate
               ? t('emergency_screen_subtitle')
@@ -645,18 +731,18 @@ export const ResultPage = () => {
           ) : isHealthyOrRoutine ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{
-                background: '#f0fdf4',
-                border: '1px solid #bbf7d0',
+                background: '#edf4fe',
+                border: '1px solid #c8d9f0',
                 borderRadius: '8px',
                 padding: '12px 14px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '10px',
-                color: '#166534',
+                color: '#1b3560',
                 fontSize: '0.88rem',
                 fontWeight: 600
               }}>
-                <CheckCircle2 size={20} color="#16a34a" style={{ flexShrink: 0 }} />
+                <CheckCircle2 size={20} color="#3f64ae" style={{ flexShrink: 0 }} />
                 <span>Health Status Normal · Self-Monitoring Recommended</span>
               </div>
               <button
@@ -689,8 +775,8 @@ export const ResultPage = () => {
                   className="btn btn-outline btn-block"
                   onClick={() => setShowTestModal(true)}
                   style={{
-                    borderColor: '#0284c7',
-                    color: '#0284c7',
+                    borderColor: '#3f64ae',
+                    color: '#3f64ae',
                     background: '#ffffff',
                     fontWeight: 600,
                     display: 'flex',
@@ -810,7 +896,7 @@ export const ResultPage = () => {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <FlaskConical size={24} color="#0284c7" />
+                <FlaskConical size={24} color="#3f64ae" />
                 <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>
                   Book At-Home Diagnostic Testing
                 </h3>
@@ -844,7 +930,7 @@ export const ResultPage = () => {
                         justifyContent: 'space-between',
                         padding: '10px 12px',
                         borderRadius: '8px',
-                        border: selectedTests.includes(tItem.test_name) ? '1.5px solid #0284c7' : '1px solid #cbd5e1',
+                        border: selectedTests.includes(tItem.test_name) ? '1.5px solid #3f64ae' : '1px solid #cbd5e1',
                         background: selectedTests.includes(tItem.test_name) ? '#f0f9ff' : '#ffffff',
                         cursor: 'pointer'
                       }}
@@ -857,12 +943,24 @@ export const ResultPage = () => {
                           {tItem.sample_type}
                         </div>
                       </div>
-                      <input
-                        type="checkbox"
-                        checked={selectedTests.includes(tItem.test_name)}
-                        onChange={() => {}}
-                        style={{ width: '18px', height: '18px', accentColor: '#0284c7' }}
-                      />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{
+                          fontSize: '0.82rem',
+                          fontWeight: 700,
+                          color: '#3f64ae',
+                          background: '#e0f2fe',
+                          padding: '3px 8px',
+                          borderRadius: '6px'
+                        }}>
+                          ₹{getTestPrice(tItem)}
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={selectedTests.includes(tItem.test_name)}
+                          onChange={() => {}}
+                          style={{ width: '18px', height: '18px', accentColor: '#3f64ae' }}
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -910,8 +1008,43 @@ export const ResultPage = () => {
                 />
               </div>
 
-              <div style={{ background: '#ecfdf5', padding: '10px 12px', borderRadius: '8px', fontSize: '0.78rem', color: '#047857' }}>
-                ✓ Sterile collection kits used · 100% digital payment on collection · Free doorstep pickup.
+              {/* Price Breakdown Summary */}
+              <div style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '5px',
+                fontSize: '0.82rem'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                  <span>Tests Selected ({selectedTests.length}):</span>
+                  <span style={{ fontWeight: 600, color: '#1e293b' }}>₹{totalSelectedTestPrice}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                  <span>Doorstep Phlebotomist Visit:</span>
+                  <span style={{ fontWeight: 700, color: '#10b981' }}>FREE</span>
+                </div>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  borderTop: '1px dashed #cbd5e1',
+                  paddingTop: '6px',
+                  marginTop: '2px',
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  color: '#0f172a'
+                }}>
+                  <span>Total Amount (Pay on sample collection):</span>
+                  <span style={{ color: '#3f64ae', fontSize: '1rem' }}>₹{totalSelectedTestPrice}</span>
+                </div>
+              </div>
+
+              <div style={{ background: '#edf4fe', padding: '10px 12px', borderRadius: '8px', fontSize: '0.78rem', color: '#1b3560', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <CheckCircle2 size={13} color="#3f64ae" />
+                <span>Sterile collection kits used · 100% digital payment on collection · Free doorstep pickup.</span>
               </div>
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
@@ -926,9 +1059,9 @@ export const ResultPage = () => {
                 <button
                   type="submit"
                   className="btn btn-primary"
-                  style={{ flex: 2, background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)' }}
+                  style={{ flex: 2, background: '#3f64ae' }}
                 >
-                  Confirm Lab Sample Booking
+                  Confirm Lab Booking • Pay ₹{totalSelectedTestPrice}
                 </button>
               </div>
             </form>
@@ -989,33 +1122,49 @@ export const ResultPage = () => {
               marginBottom: '16px',
               display: 'flex',
               alignItems: 'center',
-              gap: '14px'
+              justifyContent: 'space-between',
+              gap: '14px',
+              flexWrap: 'wrap'
             }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  background: '#edf4fe',
+                  color: '#3f64ae',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 700,
+                  fontSize: '1.1rem',
+                  flexShrink: 0
+                }}>
+                  AV
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.98rem', color: '#0f172a' }}>
+                    Sister Anjali Verma, RN
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#475569' }}>
+                    B.Sc Nursing · 8+ yrs experience · Rating 4.9/5 (140+ visits)
+                  </div>
+                  <div style={{ fontSize: '0.76rem', color: '#3f64ae', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <MapPin size={12} color="#3f64ae" />
+                    <span>2.4 km away · Sector 4, Rohini · Available for Immediate Dispatch</span>
+                  </div>
+                </div>
+              </div>
               <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '50%',
-                background: '#ecfdf5',
-                color: '#059669',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 700,
-                fontSize: '1.1rem',
+                background: '#edf4fe',
+                border: '1px solid #c8d9f0',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                textAlign: 'right',
                 flexShrink: 0
               }}>
-                AV
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: '0.98rem', color: '#0f172a' }}>
-                  Sister Anjali Verma, RN
-                </div>
-                <div style={{ fontSize: '0.8rem', color: '#475569' }}>
-                  B.Sc Nursing · 8+ yrs experience · 4.9 ★ (140+ visits)
-                </div>
-                <div style={{ fontSize: '0.76rem', color: '#059669', fontWeight: 600 }}>
-                  📍 2.4 km away · Sector 4, Rohini · Available for Immediate Dispatch
-                </div>
+                <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#1b3560' }}>₹{nursePrice}</div>
+                <div style={{ fontSize: '0.7rem', color: '#3f64ae', fontWeight: 600 }}>Per Home Visit</div>
               </div>
             </div>
 
@@ -1063,8 +1212,29 @@ export const ResultPage = () => {
                 />
               </div>
 
-              <div style={{ background: '#f0fdf4', padding: '10px 12px', borderRadius: '8px', fontSize: '0.78rem', color: '#166534' }}>
-                ✓ Includes BP, SpO2, temp monitoring, throat & lung check, medication support, and detailed clinical report for your doctor.
+              {/* Nurse Fee Summary */}
+              <div style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                fontSize: '0.84rem'
+              }}>
+                <div>
+                  <div style={{ fontWeight: 600, color: '#1e293b' }}>Clinical Home Visit Fee</div>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b' }}>No advance needed • Pay via UPI/Cash after checkup</div>
+                </div>
+                <div style={{ fontWeight: 800, color: '#3f64ae', fontSize: '1.1rem' }}>
+                  ₹{nursePrice}
+                </div>
+              </div>
+
+              <div style={{ background: '#edf4fe', padding: '10px 12px', borderRadius: '8px', fontSize: '0.78rem', color: '#1b3560', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <CheckCircle2 size={13} color="#3f64ae" />
+                <span>Includes BP, SpO2, temp monitoring, throat &amp; lung check, medication support, and detailed clinical report for your doctor.</span>
               </div>
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
@@ -1079,9 +1249,9 @@ export const ResultPage = () => {
                 <button
                   type="submit"
                   className="btn btn-primary"
-                  style={{ flex: 2, background: '#047857' }}
+                  style={{ flex: 2, background: '#3f64ae' }}
                 >
-                  Confirm Nurse Home Visit
+                  Confirm Nurse Home Visit • ₹{nursePrice}
                 </button>
               </div>
             </form>

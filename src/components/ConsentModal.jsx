@@ -42,13 +42,13 @@ export const ConsentModal = ({ isOpen, onAccept, onDecline }) => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#0284c7'
+              color: '#3f64ae'
             }}
           >
             <ShieldCheck size={24} />
           </div>
           <div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>{t('privacy_title')}</h3>
+            <h3 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: '1.35rem', fontWeight: 600, color: '#101e33', margin: 0 }}>{t('privacy_title')}</h3>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>DPDP Act 2023 Compliance</span>
           </div>
         </div>
