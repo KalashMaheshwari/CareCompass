@@ -13,6 +13,8 @@ export const GlobalHeader = () => {
   const isEmergency = currentRoute === '/emergency';
   if (isEmergency) return null;
 
+  const isLanding = currentRoute === '/' || currentRoute === '';
+
   // Close dropdowns on outside click
   useEffect(() => {
     const handleOutsideClick = (e) => {
@@ -63,7 +65,7 @@ export const GlobalHeader = () => {
   };
 
   return (
-    <header className="gh-shell">
+    <header className={`gh-shell ${isLanding ? 'is-landing' : ''}`}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Instrument+Sans:wght@400;500;600;700&display=swap');
 
@@ -79,13 +81,19 @@ export const GlobalHeader = () => {
           --gh-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
 
           position: sticky;
-          top: 12px;
+          top: 14px;
           z-index: 100;
           padding: 0 24px;
           font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           -webkit-font-smoothing: antialiased;
         }
 
+        /* Float on top of landing image so image stays at top */
+        .gh-shell.is-landing {
+          margin-bottom: -70px;
+        }
+
+        /* 100% Strictly Pill-Shaped Capsule */
         .gh-pill {
           max-width: 1120px;
           margin: 0 auto;
@@ -93,12 +101,12 @@ export const GlobalHeader = () => {
           display: flex;
           align-items: center;
           gap: 16px;
-          padding: 0 16px;
-          background: rgba(255, 255, 255, 0.78);
+          padding: 0 16px 0 18px;
+          background: rgba(255, 255, 255, 0.82);
           backdrop-filter: blur(24px) saturate(190%);
           -webkit-backdrop-filter: blur(24px) saturate(190%);
-          border: 1px solid rgba(255, 255, 255, 0.6);
-          border-radius: 18px;
+          border: 1px solid rgba(255, 255, 255, 0.7);
+          border-radius: 9999px !important;
           box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04), 
                       0 8px 24px -4px rgba(15, 23, 42, 0.08);
         }
@@ -117,7 +125,7 @@ export const GlobalHeader = () => {
           transition: opacity 120ms ease;
         }
         .gh-brand:hover { opacity: .8; }
-        .gh-brand:focus-visible { outline: 2px solid var(--gh-accent); outline-offset: 2px; border-radius: 8px; }
+        .gh-brand:focus-visible { outline: 2px solid var(--gh-accent); outline-offset: 2px; border-radius: 9999px; }
 
         .gh-brand-logo {
           width: 28px;
@@ -162,7 +170,7 @@ export const GlobalHeader = () => {
           margin: 0 4px;
         }
 
-        /* ---------- Nav Links ---------- */
+        /* ---------- Nav Links (Pill-Shaped) ---------- */
         .gh-links {
           flex: 1;
           min-width: 0;
@@ -181,8 +189,8 @@ export const GlobalHeader = () => {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          padding: 6px 13px;
-          border-radius: 10px;
+          padding: 7px 15px;
+          border-radius: 9999px !important;
           background: transparent;
           border: none;
           font-family: inherit;
@@ -203,7 +211,7 @@ export const GlobalHeader = () => {
           position: absolute;
           inset: 0;
           background: var(--gh-accent-soft);
-          border-radius: 10px;
+          border-radius: 9999px !important;
           transform: scale(0);
           opacity: 0;
           z-index: -1;
@@ -218,7 +226,7 @@ export const GlobalHeader = () => {
         }
 
         .gh-link-indicator {
-          display: none; /* Replaced by expanding pill pseudo-element */
+          display: none;
         }
 
         .gh-link:hover {
@@ -263,7 +271,7 @@ export const GlobalHeader = () => {
           margin-left: auto;
         }
 
-        /* Language Selector */
+        /* Language Selector (Pill-Shaped) */
         .gh-lang-wrap {
           position: relative;
         }
@@ -272,10 +280,10 @@ export const GlobalHeader = () => {
           align-items: center;
           gap: 4px;
           height: 32px;
-          padding: 0 10px;
+          padding: 0 12px;
           background: rgba(15, 23, 42, 0.04);
           border: 1px solid transparent;
-          border-radius: 8px;
+          border-radius: 9999px !important;
           font-family: var(--gh-mono);
           font-size: 11px;
           font-weight: 600;
@@ -309,7 +317,7 @@ export const GlobalHeader = () => {
           min-width: 160px;
           background: #ffffff;
           border: 1px solid rgba(15, 23, 42, 0.08);
-          border-radius: 12px;
+          border-radius: 14px;
           padding: 6px;
           box-shadow: 0 12px 32px -8px rgba(15, 23, 42, 0.15);
           animation: gh-menu-in 200ms cubic-bezier(0.32, 0.72, 0, 1) both;
@@ -385,7 +393,7 @@ export const GlobalHeader = () => {
         .gh-circle-btn {
           width: 32px;
           height: 32px;
-          border-radius: 50%;
+          border-radius: 50% !important;
           display: grid;
           place-items: center;
           background: rgba(15, 23, 42, 0.06);
@@ -436,17 +444,17 @@ export const GlobalHeader = () => {
           position: relative;
         }
 
-        /* Emergency Button */
+        /* Emergency Button (Pill-Shaped) */
         .gh-emergency {
           display: inline-flex;
           align-items: center;
           gap: 8px;
-          height: 32px;
-          padding: 0 12px 0 14px;
+          height: 34px;
+          padding: 0 5px 0 14px;
           background: var(--gh-red);
           color: #fff;
           border: none;
-          border-radius: 8px;
+          border-radius: 9999px !important;
           font-family: inherit;
           font-size: 11.5px;
           font-weight: 700;
@@ -466,9 +474,9 @@ export const GlobalHeader = () => {
           transition-duration: 40ms;
         }
         .gh-emergency-circle {
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
+          width: 22px;
+          height: 22px;
+          border-radius: 50% !important;
           background: rgba(255, 255, 255, 0.2);
           display: grid;
           place-items: center;
@@ -478,7 +486,7 @@ export const GlobalHeader = () => {
         /* ---------- Responsive ---------- */
         @media (max-width: 900px) {
           .gh-shell { top: 8px; padding: 0 12px; }
-          .gh-pill { height: 48px; padding: 0 10px; gap: 10px; border-radius: 14px; }
+          .gh-pill { height: 48px; padding: 0 10px; gap: 10px; border-radius: 9999px !important; }
           .gh-link-text { display: none; }
           .gh-link { padding: 8px; }
           .gh-sep, .gh-brand-sub { display: none; }
@@ -519,7 +527,7 @@ export const GlobalHeader = () => {
 
         <div className="gh-sep" aria-hidden="true"></div>
 
-        {/* Center Menu Links */}
+        {/* Center Menu Links (Pill-Shaped) */}
         <div className="gh-links">
           {navLinks.map((link) => {
             const isActive = link.matchRoutes 
@@ -542,7 +550,7 @@ export const GlobalHeader = () => {
 
         {/* Right Tools & Actions */}
         <div className="gh-actions">
-          {/* Language Selector Dropdown */}
+          {/* Language Selector Dropdown (Pill-Shaped) */}
           <div className={`gh-lang-wrap ${langDropdownOpen ? 'open' : ''}`} ref={langRef}>
             <button
               type="button"
@@ -614,7 +622,7 @@ export const GlobalHeader = () => {
             />
           </div>
 
-          {/* Urgent Emergency Button */}
+          {/* Urgent Emergency Button (Pill-Shaped) */}
           <button
             id="global-emergency-button"
             type="button"
