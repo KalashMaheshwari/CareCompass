@@ -90,7 +90,7 @@ export const GlobalHeader = () => {
 
         /* Float on top of landing image with clean clearance */
         .gh-shell.is-landing {
-          margin-bottom: -50px;
+          margin-bottom: -62px;
         }
 
         /* 100% Strictly Pill-Shaped Capsule */

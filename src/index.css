@@ -204,19 +204,19 @@ h1, h2, h3, h4, h5, h6 {
 .landing-hero-backdrop {
   width: 100%;
   background: #ffffff;
-  padding: 12px 10px 0 10px;
+  padding: 8px 8px 0 8px;
   box-sizing: border-box;
 }
 
 @media (max-width: 1024px) {
   .landing-hero-backdrop {
-    padding: 10px 8px 0 8px;
+    padding: 8px 8px 0 8px;
   }
 }
 
 @media (max-width: 640px) {
   .landing-hero-backdrop {
-    padding: 10px 8px 0 8px;
+    padding: 7px 6px 0 6px;
   }
 }
 
@@ -225,7 +225,7 @@ h1, h2, h3, h4, h5, h6 {
   width: 100%;
   max-width: 100%;
   margin: 0 auto;
-  min-height: calc(100vh - 20px);
+  min-height: calc(100vh - 16px);
   padding: 110px 48px 44px 48px;
   background: url('/hero-medical.jpg') center center / cover no-repeat;
   border-radius: 20px;
@@ -240,7 +240,7 @@ h1, h2, h3, h4, h5, h6 {
 @media (max-width: 1024px) {
   .hero-showcase {
     padding: 100px 24px 36px 24px;
-    min-height: calc(100vh - 20px);
+    min-height: calc(100vh - 16px);
     border-radius: 18px;
     justify-content: flex-start;
   }
@@ -3226,7 +3226,7 @@ h1, h2, h3, h4, h5, h6 {
      1. LANDING IMAGE FRAMED WITH CRISP WHITE BORDER (100dvh)
      ======================================================================== */
   .landing-hero-backdrop {
-    padding: 10px 6px 0 6px !important;
+    padding: 7px 6px 0 6px !important;
     margin: 0 !important;
     width: 100% !important;
     background: #ffffff !important;
@@ -3236,9 +3236,9 @@ h1, h2, h3, h4, h5, h6 {
   .hero-showcase {
     position: relative !important;
     width: 100% !important;
-    min-height: calc(100vh - 16px) !important;
-    min-height: calc(100dvh - 16px) !important;
-    height: calc(100dvh - 16px) !important;
+    min-height: calc(100vh - 14px) !important;
+    min-height: calc(100dvh - 14px) !important;
+    height: calc(100dvh - 14px) !important;
     border-radius: 18px !important;
     border: 2.5px solid #ffffff !important;
     margin: 0 !important;
