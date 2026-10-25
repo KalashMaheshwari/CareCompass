@@ -88,9 +88,9 @@ export const GlobalHeader = () => {
           -webkit-font-smoothing: antialiased;
         }
 
-        /* Float on top of landing image so image stays at top */
+        /* Float on top of landing image with clean clearance */
         .gh-shell.is-landing {
-          margin-bottom: -70px;
+          margin-bottom: -50px;
         }
 
         /* 100% Strictly Pill-Shaped Capsule */
