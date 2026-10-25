@@ -157,8 +157,8 @@ export const DescribePage = ({ startListening = false, presetText = '' }) => {
             ? 'Bolte rahein... bolna khatam hone par tap karein'
             : 'Speak naturally in Hindi, Hinglish, or English... tap when finished'))
     : (micStatus === 'transcribing'
-        ? 'Samajh rahe hain... (Transcribing with Sarvam AI saaras:v3)'
-        : 'Multilingual STT (Powered by Sarvam AI saaras:v3)');
+        ? 'Samajh rahe hain... (Transcribing audio...)'
+        : 'Multilingual Voice Input (Hindi, Hinglish & English active)');
 
   return (
     <div className="dp-page">

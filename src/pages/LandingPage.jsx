@@ -42,8 +42,8 @@ export const LandingPage = () => {
     if (transcribing) {
       return {
         cardTitle: lang === 'hi' ? 'मरीज़ देखभाल एवं लक्षण मूल्यांकन' : 'Patient Care & Symptom Assessment',
-        micMain: lang === 'hi' ? 'सर्वम एआई द्वारा ट्रांसक्राइब जारी है...' : (lang === 'hinglish' ? 'Sarvam AI transcribe kar raha hai...' : 'Transcribing with Sarvam AI...'),
-        micSub: 'Sarvam AI Speech Model (saaras:v4)',
+        micMain: lang === 'hi' ? 'ऑडियो ट्रांसक्राइब हो रहा है...' : (lang === 'hinglish' ? 'Audio transcribe ho raha hai...' : 'Transcribing voice audio...'),
+        micSub: lang === 'hi' ? 'कृपया प्रतीक्षा करें...' : (lang === 'hinglish' ? 'Kripya intezar karein...' : 'Processing your voice description...'),
         divider: lang === 'hi' ? 'या लिखकर बताएँ' : (lang === 'hinglish' ? 'ya likh kar batayein' : 'or type symptoms'),
         placeholder: lang === 'hi' ? 'मरीज़ के लक्षणों के बारे में विस्तार से लिखें...' : (lang === 'hinglish' ? 'Patient ke symptoms detail mein likhein...' : 'Describe patient symptoms in detail...'),
         trust: 'Hospital-Grade Confidentiality · DPDP Act 2023',
@@ -54,8 +54,8 @@ export const LandingPage = () => {
     if (lang === 'hi') {
       return {
         cardTitle: 'मरीज़ देखभाल एवं लक्षण मूल्यांकन',
-        micMain: recording ? 'सुन रहे हैं... बोलिए' : 'बोलने के लिए दबाएँ (Sarvam AI)',
-        micSub: recording ? 'बोलना समाप्त करने के लिए दोबारा दबाएँ' : 'Sarvam Indian Speech Recognition',
+        micMain: recording ? 'सुन रहे हैं... बोलिए' : 'बोलने के लिए दबाएँ',
+        micSub: recording ? 'बोलना समाप्त करने के लिए दोबारा दबाएँ' : 'हिंदी एवं भारतीय भाषाओं हेतु वॉइस पहचान',
         divider: 'या लिखकर बताएँ',
         placeholder: 'मरीज़ के लक्षणों के बारे में विस्तार से लिखें (जैसे तेज़ बुखार, गले में खराश, या साँस लेने में तकलीफ़)...',
         trust: 'अस्पताल-स्तरीय गोपनीयता · DPDP अधिनियम 2023',
@@ -66,8 +66,8 @@ export const LandingPage = () => {
     if (lang === 'hinglish') {
       return {
         cardTitle: 'Patient Care & Symptom Assessment',
-        micMain: recording ? 'Sun rahe hain... boliye' : 'Bolne ke liye dabayein (Sarvam AI)',
-        micSub: recording ? 'Bolna khatam karne ke liye dabayein' : 'Sarvam Indian Speech Recognition',
+        micMain: recording ? 'Sun rahe hain... boliye' : 'Bolne ke liye dabayein',
+        micSub: recording ? 'Bolna khatam karne ke liye dabayein' : 'Hinglish & multilingual speech recognition',
         divider: 'ya likh kar batayein',
         placeholder: 'Patient ke symptoms detail mein likhein (e.g. Papa ko kal raat se tez bukhar hai aur gale mein kharash hai)...',
         trust: 'Hospital-Grade Privacy · DPDP Act 2023',
@@ -78,8 +78,8 @@ export const LandingPage = () => {
     // Default to English
     return {
       cardTitle: 'Patient Care & Symptom Assessment',
-      micMain: recording ? 'Listening... Speak now' : 'Tap to Speak (Sarvam AI)',
-      micSub: recording ? 'Tap anywhere to finish speaking' : 'Sarvam Indian Speech Recognition',
+      micMain: recording ? 'Listening... Speak now' : 'Tap to Speak',
+      micSub: recording ? 'Tap anywhere to finish speaking' : 'Multilingual speech recognition active',
       divider: 'or type symptoms',
       placeholder: 'Describe patient symptoms in detail (e.g. High fever, sore throat, or difficulty breathing)...',
       trust: 'Hospital-Grade Confidentiality · DPDP Act 2023',

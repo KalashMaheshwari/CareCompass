@@ -1,11 +1,7 @@
 /**
  * CareCompass Speech Service
- * High-Accuracy Multilingual Speech-to-Text (STT) powered by Sarvam AI (saaras:v4)
- * & Speech-to-Speech (TTS)
- *
- * Engine: Sarvam AI STT (/api/transcribe) - specialized for Indian accents,
- * Hindi (hi-IN), Indian English (en-IN), and code-mixed Hinglish.
- * Failover: Groq Whisper (whisper-large-v3-turbo)
+ * High-Accuracy Multilingual Speech-to-Text (STT) & Speech-to-Speech (TTS)
+ * Specialized for Indian accents, Hindi (hi-IN), Indian English (en-IN), and code-mixed Hinglish.
  */
 
 class SpeechService {
@@ -15,7 +11,7 @@ class SpeechService {
     this.isSpeaking = false;
     this.voices = [];
 
-    // MediaRecorder state for Sarvam AI STT
+    // MediaRecorder state for STT
     this.mediaRecorder = null;
     this.audioChunks = [];
     this.mediaStream = null;
@@ -50,7 +46,7 @@ class SpeechService {
   }
 
   /**
-   * Start Speech Recording for Sarvam AI STT
+   * Start Speech Recording for STT
    */
   async startListening({ language = 'hi', onResult, onError, onEnd, onTranscribing }) {
     if (this.isListening) {
@@ -87,7 +83,7 @@ class SpeechService {
         };
 
         this.mediaRecorder.start(250); // Collect slices every 250ms
-        console.log('[CareCompass STT] Sarvam AI recording started...');
+        console.log('[CareCompass STT] Audio recording started...');
         return true;
       } else {
         throw new Error('Audio recording is not supported in this browser environment.');
@@ -106,7 +102,7 @@ class SpeechService {
   }
 
   /**
-   * Stop recording and send audio to Sarvam AI STT
+   * Stop recording and send audio to STT service
    */
   async stopListening() {
     if (!this.isListening) return;
@@ -142,7 +138,7 @@ class SpeechService {
           if (onTranscribing) onTranscribing(true);
 
           try {
-            console.log(`[CareCompass STT] Uploading audio (${audioBlob.size} bytes) to Sarvam AI STT...`);
+            console.log(`[CareCompass STT] Uploading audio (${audioBlob.size} bytes)...`);
             const formData = new FormData();
             formData.append('file', audioBlob, 'speech.webm');
             formData.append('language', language || 'auto');
@@ -155,9 +151,9 @@ class SpeechService {
             if (res.ok) {
               const data = await res.json();
               const transcript = (data.text || '').trim();
-              console.log(`[CareCompass STT] Transcribed via ${data.engine || 'Sarvam'}: "${transcript}"`);
+              console.log(`[CareCompass STT] Transcribed: "${transcript}"`);
               if (transcript && onResult) {
-                onResult({ transcript, isFinal: true, engine: data.engine || 'sarvam' });
+                onResult({ transcript, isFinal: true, engine: data.engine || 'native' });
               }
             } else {
               let detail = '';
@@ -169,7 +165,7 @@ class SpeechService {
               if (onError) onError('Could not transcribe audio. Please type your message.');
             }
           } catch (err) {
-            console.error('[CareCompass STT] Sarvam STT upload network error:', err);
+            console.error('[CareCompass STT] STT upload network error:', err);
             if (onError) onError('Network error during speech transcription.');
           } finally {
             if (onTranscribing) onTranscribing(false);
