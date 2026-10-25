@@ -29,28 +29,28 @@ export const GlobalHeader = () => {
 
   // Restored CareCompass Navigation Links (Home in 1st place, Health Monitor removed)
   const navLinks = [
-    {
-      path: '/',
+    { 
+      path: '/', 
       label: t('nav_home') || 'Home',
       matchRoutes: ['/']
     },
-    {
-      path: '/describe',
+    { 
+      path: '/describe', 
       label: t('nav_symptoms') || 'Check Symptoms',
       matchRoutes: ['/describe', '/followup', '/result']
     },
-    {
-      path: '/caregivers',
+    { 
+      path: '/caregivers', 
       label: t('nav_find_caregivers') || 'Find Caregivers',
       matchRoutes: ['/caregivers', '/booking']
     },
-    {
-      path: '/dashboard',
+    { 
+      path: '/dashboard', 
       label: t('nav_safety') || 'Clinical Safety',
       matchRoutes: ['/dashboard']
     },
-    {
-      path: '/call-sim',
+    { 
+      path: '/call-sim', 
       label: t('nav_channels') || 'Phone & WhatsApp',
       matchRoutes: ['/call-sim']
     }
@@ -63,369 +63,466 @@ export const GlobalHeader = () => {
   };
 
   return (
-    <header className="global-header-container">
+    <header className="gh-shell">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Instrument+Sans:wght@400;500;600;700&display=swap');
 
-        .global-header-container {
-          --gh-ink: #0b1e3b;
-          --gh-ink-2: #2a3f5f;
-          --gh-muted: #5c6e8a;
-          --gh-faint: #8ca0bb;
-          --gh-accent: #3f64ae;
-          --gh-navbg: #eef1f6;
+        .gh-shell {
+          --gh-ink: #0a0f1a;
+          --gh-ink-2: #1e293b;
+          --gh-slate: #475569;
+          --gh-faint: #94a3b8;
+          --gh-line: rgba(15, 23, 42, 0.08);
+          --gh-accent: #2563eb;
+          --gh-accent-soft: #eff6ff;
+          --gh-red: #dc2626;
           --gh-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
 
           position: sticky;
           top: 12px;
           z-index: 100;
-          display: flex;
-          justify-content: center;
-          padding: 0 16px;
-          background: transparent;
+          padding: 0 24px;
           font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           -webkit-font-smoothing: antialiased;
         }
-        .global-header-container button { -webkit-tap-highlight-color: transparent; font-family: inherit; }
-        .global-header-container :focus-visible { outline: 2px solid var(--gh-accent); outline-offset: 2px; }
 
-        @keyframes gh-menu-in {
-          from { opacity: 0; transform: translateY(-4px) scale(.98); }
-          to { opacity: 1; transform: none; }
-        }
-
-        /* ---------- Floating capsule ---------- */
-        .global-header-container .floating-nav-pill {
-          width: min(1160px, 100%);
-          box-sizing: border-box;
+        .gh-pill {
+          max-width: 1120px;
+          margin: 0 auto;
+          height: 56px;
           display: flex;
           align-items: center;
-          gap: 12px;
-          background: rgba(255, 255, 255, 0.9);
-          backdrop-filter: blur(14px);
-          -webkit-backdrop-filter: blur(14px);
-          border: 1px solid rgba(11, 30, 59, 0.09);
-          border-radius: 999px;
-          padding: 7px 7px 7px 14px;
-          box-shadow: 0 1px 2px rgba(11, 30, 59, 0.06), 0 18px 40px -24px rgba(11, 30, 59, 0.28);
+          gap: 16px;
+          padding: 0 16px;
+          background: rgba(255, 255, 255, 0.78);
+          backdrop-filter: blur(24px) saturate(190%);
+          -webkit-backdrop-filter: blur(24px) saturate(190%);
+          border: 1px solid rgba(255, 255, 255, 0.6);
+          border-radius: 18px;
+          box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04), 
+                      0 8px 24px -4px rgba(15, 23, 42, 0.08);
         }
 
         /* ---------- Brand ---------- */
-        .global-header-container .nav-brand {
+        .gh-brand {
           display: flex;
           align-items: center;
-          gap: 10px;
-          padding: 4px 10px 4px 2px;
+          gap: 9px;
+          padding: 0;
           margin: 0;
-          border-radius: 12px;
-          background: transparent;
+          background: none;
           border: none;
           cursor: pointer;
           flex-shrink: 0;
-          transition: background-color .15s ease;
+          transition: opacity 120ms ease;
         }
-        .global-header-container .nav-brand:hover { background: rgba(11, 30, 59, 0.05); }
-        .global-header-container .nav-brand-logo {
-          width: 32px;
-          height: 32px;
+        .gh-brand:hover { opacity: .8; }
+        .gh-brand:focus-visible { outline: 2px solid var(--gh-accent); outline-offset: 2px; border-radius: 8px; }
+
+        .gh-brand-logo {
+          width: 28px;
+          height: 28px;
           object-fit: contain;
-          display: block;
+          border-radius: 6px;
           flex-shrink: 0;
         }
-        .global-header-container .nav-brand-copy {
+
+        .gh-brand-copy {
           display: flex;
           flex-direction: column;
-          align-items: flex-start;
-          line-height: 1;
-          min-width: 0;
+          gap: 0px;
         }
-        .global-header-container .nav-brand-title {
+        .gh-brand-title {
           font-family: 'Fraunces', Georgia, serif;
-          font-size: 17px;
+          font-size: 16px;
           font-weight: 600;
           letter-spacing: -.02em;
           color: var(--gh-ink);
+          line-height: 1.15;
           white-space: nowrap;
         }
-        .global-header-container .brand-care { color: var(--gh-ink); }
-        .global-header-container .brand-compass { color: var(--gh-accent); }
-        .global-header-container .nav-brand-sub {
+        .gh-care { color: var(--gh-ink); }
+        .gh-compass { color: var(--gh-accent); }
+        .gh-brand-sub {
           font-family: var(--gh-mono);
-          font-size: 8.5px;
-          font-weight: 600;
+          font-size: 8px;
+          font-weight: 700;
           letter-spacing: .14em;
+          text-transform: uppercase;
           color: var(--gh-faint);
-          margin-top: 4px;
-          white-space: nowrap;
+          line-height: 1;
+          margin-top: 1px;
         }
 
-        /* ---------- Center links cluster ---------- */
-        .global-header-container .nav-menu-links {
+        .gh-sep {
+          width: 1px;
+          height: 24px;
+          background: var(--gh-line);
+          flex-shrink: 0;
+          margin: 0 4px;
+        }
+
+        /* ---------- Nav Links ---------- */
+        .gh-links {
           flex: 1;
           min-width: 0;
           display: flex;
           align-items: center;
-          justify-content: center;
-          gap: 2px;
-          background: var(--gh-navbg);
-          border: 1px solid rgba(11, 30, 59, 0.06);
-          border-radius: 999px;
-          padding: 3px;
+          gap: 4px;
           overflow-x: auto;
-          scrollbar-width: none;
           -ms-overflow-style: none;
+          scrollbar-width: none;
+          padding-left: 4px;
         }
-        .global-header-container .nav-menu-links::-webkit-scrollbar { display: none; }
+        .gh-links::-webkit-scrollbar { display: none; }
 
-        /* ---------- Pill-fill links ---------- */
-        .global-header-container .nav-pill-link {
+        .gh-link {
           position: relative;
-          isolation: isolate;
-          overflow: hidden;
           display: inline-flex;
           align-items: center;
-          gap: 8px;
-          padding: 8px 14px;
-          border-radius: 999px;
+          justify-content: center;
+          padding: 6px 13px;
+          border-radius: 10px;
           background: transparent;
-          border: 1px solid transparent;
-          font-size: 13.5px;
+          border: none;
+          font-family: inherit;
+          font-size: 13px;
           font-weight: 500;
-          letter-spacing: -.01em;
-          line-height: 1;
-          color: var(--gh-muted);
+          color: var(--gh-slate);
           cursor: pointer;
+          transition: color 150ms ease, transform 40ms ease;
+          text-decoration: none;
+          line-height: 1;
+          overflow: hidden;
+          isolation: isolate;
           white-space: nowrap;
-          flex-shrink: 0;
-          transition: color .22s ease;
         }
-        /* fill layer — wipes left to right */
-        .global-header-container .nav-pill-link::after {
+
+        .gh-link::after {
           content: '';
           position: absolute;
           inset: 0;
-          background: var(--gh-ink);
-          border-radius: 999px;
-          z-index: 0;
-          clip-path: inset(0 100% 0 0 round 999px);
-          transition: clip-path .38s cubic-bezier(0.32, 0.72, 0, 1);
-          pointer-events: none;
+          background: var(--gh-accent-soft);
+          border-radius: 10px;
+          transform: scale(0);
+          opacity: 0;
+          z-index: -1;
+          transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1), 
+                      opacity 180ms ease,
+                      background 150ms ease;
         }
-        .global-header-container .nav-pill-link:hover::after,
-        .global-header-container .nav-pill-link:focus-visible::after,
-        .global-header-container .nav-pill-link.active::after {
-          clip-path: inset(0 0 0 0 round 999px);
-        }
-        .global-header-container .nav-pill-indicator,
-        .global-header-container .nav-pill-text {
+
+        .gh-link-text {
           position: relative;
           z-index: 1;
         }
-        .global-header-container .nav-pill-indicator {
-          width: 5px;
-          height: 5px;
-          border-radius: 50%;
-          background: currentColor;
-          opacity: .35;
-          flex-shrink: 0;
-          transition: opacity .22s ease, background-color .22s ease;
-        }
-        .global-header-container .nav-pill-link:hover { color: #fff; }
-        .global-header-container .nav-pill-link:hover .nav-pill-indicator {
-          opacity: 1;
-          background: #fff;
-        }
-        .global-header-container .nav-pill-link.active {
-          color: #fff;
-          font-weight: 600;
-        }
-        .global-header-container .nav-pill-link.active .nav-pill-indicator {
-          opacity: 1;
-          background: #fff;
+
+        .gh-link-indicator {
+          display: none; /* Replaced by expanding pill pseudo-element */
         }
 
-        /* ---------- Right actions ---------- */
-        .global-header-container .nav-right-actions {
+        .gh-link:hover {
+          color: var(--gh-ink);
+        }
+
+        .gh-link:hover::after {
+          transform: scale(1);
+          opacity: 1;
+          background: var(--gh-accent-soft);
+        }
+
+        .gh-link.active {
+          color: #ffffff;
+          font-weight: 600;
+          box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.15), 
+                      0 4px 14px -4px rgba(37, 99, 235, 0.4);
+        }
+
+        .gh-link.active::after {
+          transform: scale(1);
+          opacity: 1;
+          background: var(--gh-accent);
+          transition: background 150ms ease; 
+        }
+        
+        .gh-link.active:hover {
+          color: #ffffff;
+        }
+
+        .gh-link:active {
+          transform: scale(0.95);
+          transition-duration: 40ms;
+        }
+
+        /* ---------- Right Actions ---------- */
+        .gh-actions {
           display: flex;
           align-items: center;
           gap: 8px;
           flex-shrink: 0;
           margin-left: auto;
         }
-        .global-header-container .nav-lang-wrapper,
-        .global-header-container .nav-settings-wrapper {
-          display: flex;
-          align-items: center;
-        }
 
-        .global-header-container .nav-lang-trigger {
+        /* Language Selector */
+        .gh-lang-wrap {
+          position: relative;
+        }
+        .gh-lang-trigger {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          height: 36px;
-          padding: 0 12px;
-          background: #fff;
-          border: 1px solid rgba(11, 30, 59, 0.12);
-          border-radius: 999px;
+          gap: 4px;
+          height: 32px;
+          padding: 0 10px;
+          background: rgba(15, 23, 42, 0.04);
+          border: 1px solid transparent;
+          border-radius: 8px;
           font-family: var(--gh-mono);
-          font-size: 12px;
-          font-weight: 700;
+          font-size: 11px;
+          font-weight: 600;
           letter-spacing: .06em;
-          color: var(--gh-ink);
+          color: var(--gh-ink-2);
           cursor: pointer;
-          transition: background-color .15s ease, border-color .15s ease;
+          transition: all 150ms ease;
         }
-        .global-header-container .nav-lang-trigger:hover {
-          background: var(--gh-navbg);
-          border-color: rgba(11, 30, 59, 0.18);
+        .gh-lang-trigger:hover {
+          background: var(--gh-accent-soft);
+          border-color: rgba(37, 99, 235, 0.12);
+          color: var(--gh-accent);
+        }
+        .gh-lang-trigger:active {
+          transform: scale(0.95);
+          transition-duration: 40ms;
+        }
+        .gh-lang-trigger svg {
+          width: 12px;
+          height: 12px;
+          transition: transform 200ms ease;
+        }
+        .gh-lang-wrap.open .gh-lang-trigger svg {
+          transform: rotate(180deg);
         }
 
-        .global-header-container .nav-lang-dropdown-menu {
+        .gh-lang-menu {
           position: absolute;
-          top: calc(100% + 10px);
+          top: calc(100% + 8px);
           right: 0;
-          min-width: 192px;
-          box-sizing: border-box;
-          background: #fff;
-          border: 1px solid rgba(11, 30, 59, 0.1);
-          border-radius: 14px;
+          min-width: 160px;
+          background: #ffffff;
+          border: 1px solid rgba(15, 23, 42, 0.08);
+          border-radius: 12px;
           padding: 6px;
-          box-shadow: 0 20px 40px -20px rgba(11, 30, 59, 0.3), 0 2px 8px rgba(11, 30, 59, 0.08);
-          z-index: 50;
-          animation: gh-menu-in .18s ease both;
+          box-shadow: 0 12px 32px -8px rgba(15, 23, 42, 0.15);
+          animation: gh-menu-in 200ms cubic-bezier(0.32, 0.72, 0, 1) both;
+          z-index: 200;
         }
-        .global-header-container .nav-lang-item {
+
+        @keyframes gh-menu-in {
+          from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+          to { opacity: 1; transform: none; }
+        }
+
+        .gh-lang-item {
+          position: relative;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 10px;
           width: 100%;
           box-sizing: border-box;
-          background: transparent;
+          padding: 8px 12px;
+          border-radius: 8px;
           border: none;
-          border-radius: 9px;
-          padding: 10px 12px;
-          font-size: 13.5px;
+          background: transparent;
+          font-family: inherit;
+          font-size: 13px;
           font-weight: 500;
-          color: var(--gh-ink-2);
+          color: var(--gh-slate);
           cursor: pointer;
-          text-align: left;
-          transition: background-color .15s ease, color .15s ease;
+          transition: color 150ms ease, transform 40ms ease;
+          overflow: hidden;
+          isolation: isolate;
         }
-        .global-header-container .nav-lang-item:hover {
-          background: var(--gh-navbg);
+
+        .gh-lang-item::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: var(--gh-accent-soft);
+          border-radius: 8px;
+          transform: scale(0);
+          opacity: 0;
+          z-index: -1;
+          transition: transform 280ms cubic-bezier(0.32, 0.72, 0, 1), opacity 150ms ease;
+        }
+
+        .gh-lang-item span, .gh-lang-item svg {
+          position: relative;
+          z-index: 1;
+        }
+
+        .gh-lang-item:hover {
           color: var(--gh-ink);
         }
-        .global-header-container .nav-lang-item.active {
-          background: var(--gh-ink);
-          color: #fff;
-          font-weight: 600;
+        .gh-lang-item:hover::after {
+          transform: scale(1);
+          opacity: 1;
+        }
+        .gh-lang-item:active {
+          transform: scale(0.97);
+          transition-duration: 40ms;
         }
 
-        .global-header-container .nav-circle-action-btn {
-          width: 36px;
-          height: 36px;
+        .gh-lang-item.active {
+          color: var(--gh-accent);
+          font-weight: 600;
+        }
+        .gh-lang-item.active::after {
+          transform: scale(1);
+          opacity: 1;
+          background: rgba(37, 99, 235, 0.06);
+        }
+
+        /* Circle Buttons */
+        .gh-circle-btn {
+          width: 32px;
+          height: 32px;
           border-radius: 50%;
-          background: var(--gh-ink);
-          border: 1px solid rgba(0, 0, 0, 0.06);
           display: grid;
           place-items: center;
+          background: rgba(15, 23, 42, 0.06);
+          border: 1px solid transparent;
+          color: var(--gh-ink-2);
           cursor: pointer;
-          padding: 0;
-          box-shadow: 0 1px 2px rgba(11, 30, 59, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-          transition: background-color .15s ease, transform .15s ease;
+          transition: all 150ms ease;
+          position: relative;
+          overflow: hidden;
+          isolation: isolate;
         }
-        .global-header-container .nav-circle-action-btn:hover { background: #1e3356; }
-        .global-header-container .nav-circle-action-btn:active { transform: scale(.94); }
-        .global-header-container .nav-circle-action-btn.active { background: var(--gh-accent); }
+        .gh-circle-btn::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          background: var(--gh-accent);
+          transform: scale(0);
+          opacity: 0;
+          z-index: -1;
+          transition: transform 280ms cubic-bezier(0.32, 0.72, 0, 1), opacity 150ms ease;
+        }
+        .gh-circle-btn:hover {
+          border-color: rgba(37, 99, 235, 0.2);
+          color: #ffffff;
+        }
+        .gh-circle-btn:hover::after {
+          transform: scale(1);
+          opacity: 1;
+        }
+        .gh-circle-btn:active {
+          transform: scale(0.92);
+          transition-duration: 40ms;
+        }
+        .gh-circle-btn.active {
+          background: var(--gh-accent);
+          color: #ffffff;
+          border-color: var(--gh-accent);
+          box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+        }
+        .gh-circle-btn.active::after {
+          transform: scale(1);
+          opacity: 1;
+        }
 
-        .global-header-container .nav-emergency-btn {
+        /* Settings Wrapper */
+        .gh-settings-wrap {
+          position: relative;
+        }
+
+        /* Emergency Button */
+        .gh-emergency {
           display: inline-flex;
           align-items: center;
-          gap: 10px;
-          height: 40px;
-          padding: 0 5px 0 16px;
-          background: #dc2626;
+          gap: 8px;
+          height: 32px;
+          padding: 0 12px 0 14px;
+          background: var(--gh-red);
           color: #fff;
-          border: 1px solid rgba(0, 0, 0, 0.06);
-          border-radius: 999px;
-          font-size: 13px;
-          font-weight: 600;
-          letter-spacing: .01em;
+          border: none;
+          border-radius: 8px;
+          font-family: inherit;
+          font-size: 11.5px;
+          font-weight: 700;
+          letter-spacing: .02em;
           cursor: pointer;
-          white-space: nowrap;
-          box-shadow: 0 8px 18px -8px rgba(220, 38, 38, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.14);
-          transition: background-color .15s ease, transform .15s ease;
+          box-shadow: 0 4px 12px -4px rgba(220, 38, 38, 0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+          transition: all 150ms ease;
         }
-        .global-header-container .nav-emergency-btn:hover { background: #b91c1c; }
-        .global-header-container .nav-emergency-btn:active { transform: scale(.97); }
-        .global-header-container .nav-emergency-arrow-circle {
-          width: 30px;
-          height: 30px;
+        .gh-emergency:hover {
+          background: #b91c1c;
+          box-shadow: 0 8px 20px -6px rgba(220, 38, 38, 0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+          transform: translateY(-1px);
+        }
+        .gh-emergency:active {
+          transform: translateY(0.5px);
+          box-shadow: 0 2px 6px -2px rgba(220, 38, 38, 0.5), inset 0 2px 4px rgba(0,0,0,0.1);
+          transition-duration: 40ms;
+        }
+        .gh-emergency-circle {
+          width: 18px;
+          height: 18px;
           border-radius: 50%;
-          background: rgba(255, 255, 255, 0.18);
+          background: rgba(255, 255, 255, 0.2);
           display: grid;
           place-items: center;
           flex-shrink: 0;
-          transition: background-color .15s ease, transform .2s ease;
-        }
-        .global-header-container .nav-emergency-btn:hover .nav-emergency-arrow-circle {
-          background: rgba(255, 255, 255, 0.26);
-          transform: translate(1px, -1px);
         }
 
         /* ---------- Responsive ---------- */
-        @media (max-width: 1020px) {
-          .global-header-container .nav-brand-sub { display: none; }
-          .global-header-container .nav-pill-link { padding: 8px 11px; font-size: 13px; }
+        @media (max-width: 900px) {
+          .gh-shell { top: 8px; padding: 0 12px; }
+          .gh-pill { height: 48px; padding: 0 10px; gap: 10px; border-radius: 14px; }
+          .gh-link-text { display: none; }
+          .gh-link { padding: 8px; }
+          .gh-sep, .gh-brand-sub { display: none; }
+          .gh-brand { gap: 6px; }
         }
-        /* ---------- Hide top navbar completely on phones (< 768px) ---------- */
+        
         @media (max-width: 768px) {
-          .global-header-container {
-            display: none !important;
-          }
+          .gh-shell { display: none !important; }
         }
 
-        @media (prefers-reduced-motion: reduce) {
-          .global-header-container .nav-pill-link::after,
-          .global-header-container .nav-emergency-arrow-circle,
-          .global-header-container .nav-brand,
-          .global-header-container .nav-lang-trigger,
-          .global-header-container .nav-lang-item,
-          .global-header-container .nav-circle-action-btn,
-          .global-header-container .nav-emergency-btn { transition: none; }
-          .global-header-container .nav-lang-dropdown-menu { animation: none; }
+        @media (max-width: 600px) {
+          .gh-emergency span { display: none; }
+          .gh-emergency { width: 32px; height: 32px; padding: 0; justify-content: center; }
+          .gh-emergency-circle { display: none; }
         }
       `}</style>
 
-      {/* Floating Capsule White Pill Navbar (GeneX Style with CareCompass Brand) */}
-      <nav className="floating-nav-pill" aria-label="Main Navigation">
-        {/* Brand: User's logo.png & Refined Typography */}
-        <div
-          className="nav-brand"
-          onClick={() => navigate('/')}
-          role="button"
-          tabIndex={0}
+      <nav className="gh-pill" aria-label="Main Navigation">
+        {/* Brand */}
+        <button 
+          className="gh-brand" 
+          onClick={() => navigate('/')} 
           title="CareCompass — Multilingual Healthcare Navigator"
         >
-          <img
-            src="/logo.png"
-            alt="CareCompass Logo"
-            className="nav-brand-logo"
+          <img 
+            src="/logo.png" 
+            alt="CareCompass Logo" 
+            className="gh-brand-logo" 
           />
-          <div className="nav-brand-copy">
-            <span className="nav-brand-title">
-              <span className="brand-care">Care</span>
-              <span className="brand-compass">Compass</span>
+          <div className="gh-brand-copy">
+            <span className="gh-brand-title">
+              <span className="gh-care">Care</span>
+              <span className="gh-compass">Compass</span>
             </span>
-            <span className="nav-brand-sub">HEALTH NAVIGATOR</span>
+            <span className="gh-brand-sub">HEALTH NAVIGATOR</span>
           </div>
-        </div>
+        </button>
 
-        {/* Center Menu Links (CareCompass Core Sections) */}
-        <div className="nav-menu-links">
+        <div className="gh-sep" aria-hidden="true"></div>
+
+        {/* Center Menu Links */}
+        <div className="gh-links">
           {navLinks.map((link) => {
-            const isActive = link.matchRoutes
+            const isActive = link.matchRoutes 
               ? link.matchRoutes.some(r => currentRoute === r || (r !== '/' && currentRoute.startsWith(r)))
               : (currentRoute === link.path || (link.path !== '/' && currentRoute.startsWith(link.path)));
 
@@ -433,23 +530,23 @@ export const GlobalHeader = () => {
               <button
                 key={link.path}
                 type="button"
-                className={`nav-pill-link ${isActive ? 'active' : ''}`}
+                className={`gh-link ${isActive ? 'active' : ''}`}
                 onClick={() => navigate(link.path)}
               >
-                <span className="nav-pill-indicator" aria-hidden="true" />
-                <span className="nav-pill-text">{link.label}</span>
+                <span className="gh-link-indicator" aria-hidden="true" />
+                <span className="gh-link-text">{link.label}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Right Tools & Actions (Capsule Style) */}
-        <div className="nav-right-actions">
+        {/* Right Tools & Actions */}
+        <div className="gh-actions">
           {/* Language Selector Dropdown */}
-          <div className="nav-lang-wrapper" ref={langRef} style={{ position: 'relative' }}>
+          <div className={`gh-lang-wrap ${langDropdownOpen ? 'open' : ''}`} ref={langRef}>
             <button
               type="button"
-              className="nav-lang-trigger"
+              className="gh-lang-trigger"
               onClick={() => setLangDropdownOpen(!langDropdownOpen)}
               title="Select Language"
             >
@@ -458,10 +555,10 @@ export const GlobalHeader = () => {
             </button>
 
             {langDropdownOpen && (
-              <div className="nav-lang-dropdown-menu">
+              <div className="gh-lang-menu">
                 <button
                   type="button"
-                  className={`nav-lang-item ${language === 'en' ? 'active' : ''}`}
+                  className={`gh-lang-item ${language === 'en' ? 'active' : ''}`}
                   onClick={() => { setLanguage('en'); setLangDropdownOpen(false); }}
                 >
                   <span>English (EN)</span>
@@ -469,7 +566,7 @@ export const GlobalHeader = () => {
                 </button>
                 <button
                   type="button"
-                  className={`nav-lang-item ${language === 'hi' ? 'active' : ''}`}
+                  className={`gh-lang-item ${language === 'hi' ? 'active' : ''}`}
                   onClick={() => { setLanguage('hi'); setLangDropdownOpen(false); }}
                 >
                   <span>हिन्दी (HI)</span>
@@ -477,7 +574,7 @@ export const GlobalHeader = () => {
                 </button>
                 <button
                   type="button"
-                  className={`nav-lang-item ${language === 'hinglish' ? 'active' : ''}`}
+                  className={`gh-lang-item ${language === 'hinglish' ? 'active' : ''}`}
                   onClick={() => { setLanguage('hinglish'); setLangDropdownOpen(false); }}
                 >
                   <span>Hinglish (HN)</span>
@@ -490,25 +587,25 @@ export const GlobalHeader = () => {
           {/* User Profile Circular Action Button */}
           <button
             type="button"
-            className="nav-circle-action-btn nav-desktop-only"
+            className="gh-circle-btn"
             onClick={() => navigate('/settings')}
             title="Profile & Family Members"
             aria-label="Profile and Family Members"
           >
-            <User size={15} color="#ffffff" strokeWidth={2.2} />
+            <User size={15} strokeWidth={2.2} />
           </button>
 
-          {/* Settings Dropdown Circular Action Button (Replaced Shopping Bag) */}
-          <div className="nav-settings-wrapper nav-desktop-only" ref={settingsRef} style={{ position: 'relative' }}>
+          {/* Settings Dropdown Circular Action Button */}
+          <div className="gh-settings-wrap" ref={settingsRef}>
             <button
               id="global-settings-button"
               type="button"
-              className={`nav-circle-action-btn ${settingsDropdownOpen ? 'active' : ''}`}
+              className={`gh-circle-btn ${settingsDropdownOpen ? 'active' : ''}`}
               onClick={() => setSettingsDropdownOpen(!settingsDropdownOpen)}
               title="CareCompass Settings & Preferences"
               aria-label="CareCompass Settings"
             >
-              <Settings size={15} color="#ffffff" strokeWidth={2.2} />
+              <Settings size={15} strokeWidth={2.2} />
             </button>
 
             <SettingsDropdown
@@ -517,17 +614,17 @@ export const GlobalHeader = () => {
             />
           </div>
 
-          {/* Urgent Bright Tinging Red Emergency Button */}
+          {/* Urgent Emergency Button */}
           <button
             id="global-emergency-button"
             type="button"
-            className="nav-emergency-btn"
+            className="gh-emergency"
             onClick={() => navigate('/emergency')}
             title="Immediate Emergency Redirection (112)"
           >
             <span>Emergency 112</span>
-            <div className="nav-emergency-arrow-circle">
-              <ArrowUpRight size={13} color="#ffffff" strokeWidth={2.5} />
+            <div className="gh-emergency-circle">
+              <ArrowUpRight size={13} strokeWidth={2.5} />
             </div>
           </button>
         </div>

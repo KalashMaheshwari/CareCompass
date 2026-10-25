@@ -3199,7 +3199,8 @@ h1, h2, h3, h4, h5, h6 {
      ========================================================================== */
 
   /* Top navbar completely hidden on phones as requested */
-  .global-header-container {
+  .global-header-container,
+  .gh-shell {
     display: none !important;
   }
 
