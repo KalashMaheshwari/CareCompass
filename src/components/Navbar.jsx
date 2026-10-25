@@ -45,7 +45,7 @@ export default function Navbar() {
           max-width: 1120px;
           margin: 0 auto;
           padding: 0 24px;
-          height: 62px;
+          height: 64px;
           display: flex;
           align-items: center;
           gap: 20px;
@@ -67,9 +67,9 @@ export default function Navbar() {
         .nav-brand:hover { opacity: .8; }
 
         .nav-logo-img {
-          height: 48px;
+          height: 52px;
           width: auto;
-          max-height: 52px;
+          max-height: 54px;
           object-fit: contain;
           flex-shrink: 0;
           display: block;

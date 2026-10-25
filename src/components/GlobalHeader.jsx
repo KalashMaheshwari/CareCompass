@@ -97,11 +97,11 @@ export const GlobalHeader = () => {
         .gh-pill {
           max-width: 1120px;
           margin: 0 auto;
-          height: 62px;
+          height: 64px;
           display: flex;
           align-items: center;
           gap: 16px;
-          padding: 0 18px 0 20px;
+          padding: 0 20px 0 22px;
           background: rgba(255, 255, 255, 0.82);
           backdrop-filter: blur(24px) saturate(190%);
           -webkit-backdrop-filter: blur(24px) saturate(190%);
@@ -128,9 +128,9 @@ export const GlobalHeader = () => {
         .gh-brand:focus-visible { outline: 2px solid var(--gh-accent); outline-offset: 2px; border-radius: 9999px; }
 
         .gh-brand-logo {
-          height: 48px;
+          height: 52px;
           width: auto;
-          max-height: 52px;
+          max-height: 54px;
           object-fit: contain;
           flex-shrink: 0;
           display: block;
